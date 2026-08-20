@@ -22,7 +22,7 @@
  *
  * HOW MAX_REFERENCE_DISTANCE_KM WAS DETERMINED:
  *   1. OSM road extract (2026-08-15) was processed into a directed weighted
- *      graph of 8,282 nodes and 11,242 junction-to-junction edges.
+ *      graph of 8,282 nodes and 11,199 junction-to-junction edges.
  *   2. Exact Dijkstra was run from each of the 33 PhilAtlas barangay
  *      centroid nodes to all 32 others (1,056 pairs, zero unreachable).
  *   3. The maximum returned was 14.9434 km: Cutud → Sapangbato.
@@ -60,8 +60,8 @@ export const DEFAULT_MAP_ZOOM = 13
  *   NormalizedDistance = shortestPathKm / MAX_REFERENCE_DISTANCE_KM
  *
  * @param shortestPathKm  Dijkstra result in kilometres
- * @returns               DistanceScore ∈ [0.5, 1.0]
- *                        (0.5 at maximum city distance, 1.0 at distance 0)
+ * @returns               DistanceScore ∈ [0, 1]
+ *                        (0 when unroutable, 0.5 at maximum city distance, 1.0 at distance 0)
  */
 export function computeDistanceScore(shortestPathKm: number): number {
   if (!isFinite(shortestPathKm) || shortestPathKm < 0) return 0
