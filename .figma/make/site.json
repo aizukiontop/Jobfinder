@@ -1,0 +1,10 @@
+{
+  "description": "This web application streamlines the process of reading and understanding instructions, providing users with clear, concise guidance tailored to their needs.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
