@@ -91,6 +91,10 @@ export default function Search() {
   const [locLoading, setLocLoading] = useState(false)
   // null = not checked yet, true = inside, false = outside Angeles City
   const [userInsideCity, setUserInsideCity] = useState<boolean | null>(null)
+  // 'gps' | 'pin' — which location source is active
+  const [locMode, setLocMode] = useState<'gps' | 'pin'>('gps')
+  // true = map is awaiting a click to place the pin
+  const [pinMode, setPinMode] = useState(false)
 
   // Dijkstra-based match scores keyed by job.id — computed asynchronously
   // so each card re-renders as its Dijkstra result arrives.
@@ -99,25 +103,37 @@ export default function Search() {
 
   useEffect(() => { setLocalQuery(searchQuery) }, [searchQuery])
 
+  // Shared: apply any lat/lng as the user location (GPS or manual pin)
+  const applyLocation = useCallback((lat: number, lng: number) => {
+    setUserLat(lat)
+    setUserLng(lng)
+    import('../lib/geo').then(({ isWithinAngelesCity }) => {
+      setUserInsideCity(isWithinAngelesCity(lat, lng))
+    })
+  }, [])
+
   const requestLocation = () => {
     if (!navigator.geolocation) return
     setLocLoading(true)
     navigator.geolocation.getCurrentPosition(
       pos => {
-        const lat = pos.coords.latitude
-        const lng = pos.coords.longitude
-        setUserLat(lat)
-        setUserLng(lng)
-        // Boundary check — only pass coordinates to Dijkstra when inside Angeles City
-        import('../lib/geo').then(({ isWithinAngelesCity }) => {
-          setUserInsideCity(isWithinAngelesCity(lat, lng))
-        })
+        applyLocation(pos.coords.latitude, pos.coords.longitude)
         setLocLoading(false)
+        setLocMode('gps')
+        setPinMode(false)
       },
       () => setLocLoading(false),
       { timeout: 10000 }
     )
   }
+
+  // Called when user clicks the map in pin mode
+  const handleMapClick = useCallback((lat: number, lng: number) => {
+    if (!pinMode) return
+    applyLocation(lat, lng)
+    setLocMode('pin')
+    setPinMode(false) // exit pin-placement mode after first click
+  }, [pinMode, applyLocation])
 
   // Step 1: Filter jobs (synchronous)
   const filtered = useMemo(() => {
@@ -234,6 +250,19 @@ export default function Search() {
           </div>
         </div>
       )}
+      {pinMode && (
+        <div style={{ background: '#f5f3ff', borderBottom: '1px solid #ddd6fe', padding: '8px 16px' }}>
+          <div className="max-w-7xl mx-auto flex items-center gap-2" style={{ fontSize: 13, color: '#5b21b6' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" style={{ flexShrink: 0 }}>
+              <line x1="12" y1="17" x2="12" y2="22"/><path d="M12 17C8.686 17 6 14.314 6 11A6 6 0 0 1 18 11c0 3.314-2.686 6-6 6z"/>
+              <circle cx="12" cy="11" r="2"/>
+            </svg>
+            <span>
+              <strong>Click anywhere on the map</strong> to place your location pin. The pin will be used for route calculation.
+            </span>
+          </div>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto flex flex-wrap gap-2 items-center">
           <div style={{ border: '1px solid #d1d5db', borderRadius: 6 }} className="flex items-center px-3 gap-2 flex-1 min-w-48">
             <span className="text-gray-400"><SearchIcon /></span>
@@ -252,21 +281,48 @@ export default function Search() {
           >
             Find
           </button>
-          <button
-            onClick={requestLocation}
-            disabled={locLoading}
-            title="Use my location for route calculation"
-            style={{
-              border: `1px solid ${userInsideCity === true ? '#16a34a' : userInsideCity === false ? '#f59e0b' : '#d1d5db'}`,
-              borderRadius: 6,
-              color: userInsideCity === true ? '#16a34a' : userInsideCity === false ? '#92400e' : '#374151',
-              background: userInsideCity === true ? '#f0fdf4' : userInsideCity === false ? '#fef3c7' : '#fff',
-            }}
-            className="px-4 py-2 text-sm font-medium flex items-center gap-2 hover:bg-gray-50"
-          >
-            <LocationIcon />
-            {locLoading ? 'Locating…' : userInsideCity === true ? 'Located ✓' : userInsideCity === false ? 'Outside Area' : 'My Location'}
-          </button>
+          {/* ── Location: GPS + Pin two-button group ── */}
+          <div style={{ display: 'flex', gap: 4 }}>
+            {/* Option A — GPS */}
+            <button
+              onClick={() => { setLocMode('gps'); setPinMode(false); requestLocation() }}
+              disabled={locLoading}
+              title="Use browser GPS location"
+              style={{
+                border: `1px solid ${locMode === 'gps' && userInsideCity === true ? '#16a34a' : locMode === 'gps' && userInsideCity === false ? '#f59e0b' : '#d1d5db'}`,
+                borderRadius: 6,
+                color: locMode === 'gps' && userInsideCity === true ? '#16a34a' : locMode === 'gps' && userInsideCity === false ? '#92400e' : '#374151',
+                background: locMode === 'gps' && userInsideCity === true ? '#f0fdf4' : locMode === 'gps' && userInsideCity === false ? '#fef3c7' : '#fff',
+              }}
+              className="px-3 py-2 text-sm font-medium flex items-center gap-1 hover:bg-gray-50"
+            >
+              <LocationIcon />
+              {locLoading ? 'Locating…' : locMode === 'gps' && userInsideCity === true ? 'GPS ✓' : locMode === 'gps' && userInsideCity === false ? 'Outside' : 'GPS'}
+            </button>
+
+            {/* Option B — Manual pin */}
+            <button
+              onClick={() => {
+                setLocMode('pin')
+                setPinMode(v => !v)
+                if (!showMap) { /* open map automatically so user can click */ }
+              }}
+              title={pinMode ? 'Click anywhere on the map to place your pin' : 'Manually pin your location on the map'}
+              style={{
+                border: `1px solid ${pinMode ? '#7c3aed' : locMode === 'pin' && userInsideCity === true ? '#16a34a' : locMode === 'pin' && userInsideCity === false ? '#f59e0b' : '#d1d5db'}`,
+                borderRadius: 6,
+                color: pinMode ? '#7c3aed' : locMode === 'pin' && userInsideCity === true ? '#16a34a' : locMode === 'pin' && userInsideCity === false ? '#92400e' : '#374151',
+                background: pinMode ? '#f5f3ff' : locMode === 'pin' && userInsideCity === true ? '#f0fdf4' : locMode === 'pin' && userInsideCity === false ? '#fef3c7' : '#fff',
+              }}
+              className="px-3 py-2 text-sm font-medium flex items-center gap-1 hover:bg-gray-50"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="17" x2="12" y2="22"/><path d="M12 17C8.686 17 6 14.314 6 11A6 6 0 0 1 18 11c0 3.314-2.686 6-6 6z"/>
+                <circle cx="12" cy="11" r="2"/>
+              </svg>
+              {pinMode ? 'Click map…' : locMode === 'pin' && userInsideCity === true ? 'Pin ✓' : locMode === 'pin' && userInsideCity === false ? 'Outside' : 'Pin'}
+            </button>
+          </div>
           <button
             onClick={() => setShowMap(v => !v)}
             style={{
@@ -453,6 +509,8 @@ export default function Search() {
                 onSelectJob={id => setSelectedJobId(id === selectedJobId ? null : id)}
                 userLat={userInsideCity === true ? userLat : null}
                 userLng={userInsideCity === true ? userLng : null}
+                onMapClick={pinMode ? handleMapClick : null}
+                pinMode={pinMode}
               />
             </div>
 

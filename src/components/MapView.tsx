@@ -37,6 +37,10 @@ interface MapViewProps {
   userLat?: number | null
   userLng?: number | null
   onRouteComputed?: (jobId: string, info: RouteInfo) => void
+  /** When set, map clicks are forwarded to this callback instead of ignored */
+  onMapClick?: ((lat: number, lng: number) => void) | null
+  /** When true, shows a visual cursor/hint that the map is in pin-placement mode */
+  pinMode?: boolean
 }
 
 // ─── Marker icons ──────────────────────────────────────────────────────────────
@@ -153,6 +157,7 @@ function buildNodeLayer(
 
 export default function MapView({
   jobs, selectedJobId, onSelectJob, userLat, userLng, onRouteComputed,
+  onMapClick, pinMode,
 }: MapViewProps) {
   // Map + Leaflet refs
   const mapContainerRef = useRef<HTMLDivElement>(null)
@@ -167,6 +172,8 @@ export default function MapView({
   const nodeLayerRef = useRef<import('leaflet').LayerGroup | null>(null)
   const graphCacheRef = useRef<RoadGraph | null>(null)
   const routeKeyRef = useRef<string>('')
+  // Holds latest onMapClick prop so the map click handler doesn't need re-registration
+  const onMapClickRef = useRef<((lat: number, lng: number) => void) | null | undefined>(null)
 
   // Map state
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null)
@@ -179,7 +186,7 @@ export default function MapView({
   // Panel state
   const [panelCollapsed, setPanelCollapsed] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
-  const [panelPos, setPanelPos] = useState({ x: 12, y: 12 }) // left, bottom offset
+  const [panelPos, setPanelPos] = useState({ x: 12, y: 12 })
   const dragRef = useRef<{ active: boolean; startMX: number; startMY: number; startX: number; startY: number }>({
     active: false, startMX: 0, startMY: 0, startX: 12, startY: 12,
   })
@@ -222,6 +229,15 @@ export default function MapView({
     }
   }, [])
 
+  // ── Keep onMapClick ref in sync + update cursor for pin mode ─────────────
+  useEffect(() => {
+    onMapClickRef.current = onMapClick
+    const container = mapContainerRef.current
+    if (container) {
+      container.style.cursor = pinMode ? 'crosshair' : ''
+    }
+  }, [onMapClick, pinMode])
+
   // ── Initialise map ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return
@@ -243,6 +259,10 @@ export default function MapView({
 
       canvasRendererRef.current = L.canvas({ padding: 0.5 })
       map.on('zoomend', () => setCurrentZoom(map.getZoom()))
+      // Map click — forwarded only when onMapClick is set (pin mode)
+      map.on('click', (e: import('leaflet').LeafletMouseEvent) => {
+        onMapClickRef.current?.(e.latlng.lat, e.latlng.lng)
+      })
       mapRef.current = map
 
       jobs.forEach(job => {
@@ -252,6 +272,28 @@ export default function MapView({
           zIndexOffset: 500,
         })
         marker.on('click', () => onSelectJob(job.id))
+        // Hover tooltip — full address, constrained width via tooltipopen event
+        const tooltipText = job.address && !job.address.includes('branch not specified') && !job.address.includes('pooled multi-branch')
+          ? job.address
+          : job.location
+        marker.bindTooltip(tooltipText, {
+          permanent: false,
+          direction: 'top',
+          offset: [0, -16],
+        })
+        marker.on('tooltipopen', () => {
+          const tooltip = marker.getTooltip()
+          const el = tooltip?.getElement()
+          if (!el || !tooltip) return
+          el.style.maxWidth = '180px'
+          el.style.whiteSpace = 'normal'
+          el.style.overflowWrap = 'break-word'
+          el.style.fontSize = '11px'
+          el.style.lineHeight = '1.35'
+          el.style.padding = '4px 7px'
+          // Force Leaflet to recalculate tooltip position after style changes
+          tooltip.update()
+        })
         marker.addTo(map)
         markersRef.current.set(job.id, marker)
       })
@@ -349,10 +391,6 @@ export default function MapView({
     setRouteInfo(null); setIsLoadingRoute(true)
 
     try {
-      // ── Boundary check: reject outside-city user coordinates ────────────────
-      // Do NOT snap an outside-city user to the road graph. Snapping would start
-      // Dijkstra from the nearest boundary node, not from the user's actual location,
-      // producing a misleading route and incorrect DistanceScore.
       const { isWithinAngelesCity } = await import('../lib/geo')
       if (!isWithinAngelesCity(userLat, userLng)) {
         const info: RouteInfo = {
@@ -514,10 +552,8 @@ export default function MapView({
             fontFamily: 'Inter, sans-serif',
             fontSize: 12,
             overflow: 'hidden',
-            // Don't let the panel capture scroll/zoom from the map
             touchAction: 'none',
           }}
-          // Stop map events leaking through the panel
           onMouseDown={e => e.stopPropagation()}
           onWheel={e => e.stopPropagation()}
         >
@@ -544,9 +580,7 @@ export default function MapView({
             </span>
 
             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-              {/* Drag hint icon */}
               <span title="Drag to move" style={{ color: '#93c5fd', fontSize: 14, lineHeight: 1, cursor: 'grab', padding: '0 2px' }}>⠿</span>
-              {/* Collapse toggle */}
               <button
                 onMouseDown={e => e.stopPropagation()}
                 onClick={() => setPanelCollapsed(v => !v)}
@@ -568,53 +602,11 @@ export default function MapView({
               {isLoadingRoute ? (
                 <div style={{ color: '#6b7280', padding: '4px 0' }}>Running Dijkstra's Algorithm…</div>
               ) : routeInfo ? (
-                <>
-                  <PRow label="Algorithm" value={<strong>Dijkstra's Algorithm</strong>} />
-                  <PRow label="Graph" value={
-                    <span>Angeles City OSM Road Network
-                      <br /><span style={{ color: '#9ca3af', fontSize: 10 }}>8,282 nodes · 11,199 edges · 879 km</span>
-                    </span>
-                  } />
-                  <PRow label="Route Found" value={
-                    routeInfo.sourceNodeId === 'OUTSIDE_ANGELES_CITY'
-                      ? <span style={{ color: '#d97706', fontWeight: 600 }}>⚠ Location outside Angeles City</span>
-                      : <span style={{ color: routeInfo.found ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                          {routeInfo.found ? '✓ Yes' : '✗ No (snap failed)'}
-                        </span>
-                  } />
-                  {routeInfo.found && (
-                    <>
-                      <PRow label="Shortest Distance" value={
-                        <span>
-                          <strong>{routeInfo.distanceKm.toFixed(3)} km</strong>
-                          {(routeInfo.snapUserKm + routeInfo.snapJobKm) > 0.01 && (
-                            <span style={{ color: '#9ca3af', fontSize: 10 }}>
-                              {' '}(road {roadKm.toFixed(3)} + snap {(routeInfo.snapUserKm + routeInfo.snapJobKm).toFixed(3)})
-                            </span>
-                          )}
-                        </span>
-                      } />
-                      <PRow label="Distance Score G(a,j)" value={routeInfo.distanceScore.toFixed(4)} />
-                    </>
-                  )}
-                  <PRow label="Source Node" value={
-                    <code style={{ fontSize: 10, background: '#f3f4f6', padding: '1px 4px', borderRadius: 3 }}>
-                      {routeInfo.sourceNodeId}
-                    </code>
-                  } />
-                  <PRow label="Target Node" value={
-                    <code style={{ fontSize: 10, background: '#f3f4f6', padding: '1px 4px', borderRadius: 3 }}>
-                      {routeInfo.targetNodeId}
-                    </code>
-                  } />
-                  <PRow label="Nodes Evaluated" value={routeInfo.nodesEvaluated.toLocaleString()} />
-                  <PRow label="Edges Relaxed" value={routeInfo.edgesRelaxed.toLocaleString()} />
-                  <PRow label="Execution Time" value={`${routeInfo.executionMs.toFixed(2)} ms`} />
-
-                  <div style={{ marginTop: 8, paddingTop: 7, borderTop: '1px solid #f3f4f6', color: '#9ca3af', fontSize: 10 }}>
-                    OSM © OpenStreetMap contributors (ODbL) · 2026-08-15
-                  </div>
-                </>
+                <RoutePanel
+                  routeInfo={routeInfo}
+                  roadKm={roadKm}
+                  selectedJob={jobs.find(j => j.id === selectedJobId) ?? null}
+                />
               ) : null}
             </div>
           )}
@@ -637,7 +629,127 @@ export default function MapView({
   )
 }
 
+// ─── Route panel — user-friendly view + collapsible technical details ──────────
+
+function RoutePanel({ routeInfo, roadKm, selectedJob }: {
+  routeInfo: RouteInfo
+  roadKm: number
+  selectedJob: import('../types').Job | null
+}) {
+  const [techOpen, setTechOpen] = useState(false)
+
+  const jobLocation = selectedJob
+    ? (selectedJob.address && !selectedJob.address.includes('branch not specified') && !selectedJob.address.includes('pooled multi-branch')
+        ? selectedJob.address
+        : selectedJob.location)
+    : null
+
+  const isOutside = routeInfo.sourceNodeId === 'OUTSIDE_ANGELES_CITY'
+  const distPct = Math.round(routeInfo.distanceScore * 100)
+
+  return (
+    <>
+      {jobLocation && (
+        <div style={{ marginBottom: 5 }}>
+          <div style={{ color: '#6b7280', fontSize: 10, marginBottom: 1 }}>Job Location</div>
+          <div style={{ color: '#111827', fontSize: 11, fontWeight: 500, lineHeight: 1.35 }}>{jobLocation}</div>
+        </div>
+      )}
+
+      {isOutside ? (
+        <div style={{ color: '#d97706', fontWeight: 600, fontSize: 11, marginBottom: 4 }}>
+          ⚠ Location outside Angeles City
+        </div>
+      ) : routeInfo.found ? (
+        <div style={{ display: 'flex', gap: 12, marginBottom: 5 }}>
+          <div>
+            <div style={{ color: '#6b7280', fontSize: 10, marginBottom: 1 }}>Shortest Route</div>
+            <div style={{ color: '#111827', fontSize: 13, fontWeight: 700 }}>
+              {routeInfo.distanceKm.toFixed(3)} km
+            </div>
+          </div>
+          <div>
+            <div style={{ color: '#6b7280', fontSize: 10, marginBottom: 1 }}>Distance Score</div>
+            <div style={{ color: '#0f2044', fontSize: 13, fontWeight: 700 }}>
+              {distPct}%
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ color: '#dc2626', fontWeight: 600, fontSize: 11, marginBottom: 4 }}>
+          Route not found (snap failed)
+        </div>
+      )}
+
+      <button
+        onClick={() => setTechOpen(v => !v)}
+        style={{
+          background: 'none', border: 'none', padding: '3px 0',
+          color: '#6b7280', fontSize: 10, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 3, width: '100%',
+          borderTop: '1px solid #f3f4f6', marginTop: 2,
+        }}
+      >
+        <span style={{ fontSize: 8 }}>{techOpen ? '▼' : '▶'}</span>
+        More route details
+      </button>
+
+      {techOpen && (
+        <div style={{ marginTop: 4, maxHeight: 160, overflowY: 'auto', paddingRight: 2 }}>
+          <TRow label="Algorithm" value="Dijkstra's Algorithm" bold />
+          <TRow label="Graph" value="Angeles City OSM Road Network" />
+          <TRow label="" value="8,282 nodes · 11,199 edges · 879 km" small />
+          {routeInfo.found && (
+            <>
+              <TRow label="Shortest Distance" value={
+                `${routeInfo.distanceKm.toFixed(3)} km` +
+                ((routeInfo.snapUserKm + routeInfo.snapJobKm) > 0.01
+                  ? ` (road ${roadKm.toFixed(3)} + snap ${(routeInfo.snapUserKm + routeInfo.snapJobKm).toFixed(3)})`
+                  : '')
+              } />
+              <TRow label="Distance Score G(a,j)" value={routeInfo.distanceScore.toFixed(4)} />
+            </>
+          )}
+          <TRow label="Source Node" value={routeInfo.sourceNodeId} mono />
+          <TRow label="Target Node" value={routeInfo.targetNodeId} mono />
+          <TRow label="Nodes Evaluated" value={routeInfo.nodesEvaluated.toLocaleString()} />
+          <TRow label="Edges Relaxed" value={routeInfo.edgesRelaxed.toLocaleString()} />
+          <TRow label="Execution Time" value={`${routeInfo.executionMs.toFixed(2)} ms`} />
+          <div style={{ marginTop: 5, paddingTop: 4, borderTop: '1px solid #f3f4f6', color: '#9ca3af', fontSize: 9 }}>
+            OSM © OpenStreetMap contributors (ODbL) · 2026-08-15
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 // ─── Small helpers ─────────────────────────────────────────────────────────────
+
+function TRow({ label, value, bold, small, mono }: {
+  label: string
+  value: string
+  bold?: boolean
+  small?: boolean
+  mono?: boolean
+}) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+      marginBottom: 2, gap: 6, fontSize: small ? 9 : 10 }}>
+      {label && <span style={{ color: '#6b7280', flexShrink: 0, minWidth: 0 }}>{label}</span>}
+      <span style={{
+        color: '#374151',
+        fontWeight: bold ? 600 : 400,
+        fontFamily: mono ? 'monospace' : undefined,
+        fontSize: mono ? 9 : undefined,
+        textAlign: label ? 'right' : 'left',
+        flex: 1,
+        minWidth: 0,
+        wordBreak: 'break-all',
+      }}>{value}</span>
+    </div>
+  )
+}
 
 function PRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
