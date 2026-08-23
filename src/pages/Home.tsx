@@ -371,7 +371,7 @@ export default function Home() {
       >
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
           <p className="text-xs text-gray-400">
-            © 2024 JobFinder. All rights reserved.
+            © 2026 JobFinder. All rights reserved.
           </p>
 
           <div className="flex gap-4">
