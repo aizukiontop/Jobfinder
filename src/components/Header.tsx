@@ -34,7 +34,7 @@ export default function Header() {
           <img
             src={jobfinderLogo}
             alt="JobFinder Logo"
-            className="w-10 h-10 object-contain"
+            className="w-16 h-16 object-contain"
           />
 
           <span
