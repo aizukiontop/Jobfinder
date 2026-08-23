@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useApp } from '../context'
-import { EMPLOYMENT_TYPES, EXPERIENCE_LEVELS } from '../data'
 import { BARANGAY_NAMES } from '../data/barangays'
 import MapView from '../components/MapView'
 import type { Job } from '../types'
@@ -59,6 +58,19 @@ function LocationIcon() {
 }
 
 const DATE_OPTIONS = ['Any time', 'Past 24 hours', 'Past week', 'Past month']
+
+const EMPLOYMENT_FILTERS = [
+  { label: 'Full-time', values: ['Full-time'] },
+  { label: 'Part-time', values: ['Part-time'] },
+  { label: 'Contract/Temporary', values: ['Contract', 'Temporary'] },
+  { label: 'Internship', values: ['Internship'] },
+]
+
+const EXPERIENCE_FILTERS = [
+  { label: 'Entry level', values: ['Entry level', 'Associate'] },
+  { label: 'Mid-level', values: ['Mid-Senior level'] },
+  { label: 'Senior level', values: ['Director', 'Executive'] },
+]
 
 export default function Search() {
   const { allJobs, navigate, toggleSave, savedJobIds, searchQuery, setSearchQuery,
@@ -139,10 +151,18 @@ export default function Search() {
       jobs = jobs.filter(j => j.daysAgo <= limit)
     }
     if (empTypes.length > 0) {
-      jobs = jobs.filter(j => empTypes.includes(j.employmentType))
+  jobs = jobs.filter(j =>
+    empTypes.some(type =>
+      EMPLOYMENT_FILTERS.find(filter => filter.label === type)?.values.includes(j.employmentType)
+        )
+      )
     }
     if (expLevels.length > 0) {
-      jobs = jobs.filter(j => expLevels.includes(j.experienceLevel))
+  jobs = jobs.filter(j =>
+    expLevels.some(level =>
+      EXPERIENCE_FILTERS.find(filter => filter.label === level)?.values.includes(j.experienceLevel)
+        )
+      )
     }
     return jobs
   }, [allJobs, localQuery, barangayFilter, dateFilter, empTypes, expLevels])
@@ -309,36 +329,36 @@ export default function Search() {
           <div style={{ borderTop: '1px solid #e5e7eb' }} className="pt-4 mb-5">
             <div className="text-sm font-semibold text-gray-800 mb-3">Employment Type</div>
             <div className="space-y-2">
-              {EMPLOYMENT_TYPES.map(t => (
-                <label key={t} className="flex items-center gap-2 cursor-pointer">
+              {EMPLOYMENT_FILTERS.map(filter => (
+                <label key={filter.label} className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={empTypes.includes(t)}
-                    onChange={() => { toggleEmpType(t); setCurrentPage(1) }}
+                    checked={empTypes.includes(filter.label)}
+                    onChange={() => { toggleEmpType(filter.label); setCurrentPage(1) }}
                     style={{ accentColor: '#16a34a' }}
                   />
-                  <span className="text-sm text-gray-600">{t}</span>
+                  <span className="text-sm text-gray-600">{filter.label}</span>
                 </label>
               ))}
             </div>
           </div>
 
-          <div style={{ borderTop: '1px solid #e5e7eb' }} className="pt-4">
-            <div className="text-sm font-semibold text-gray-800 mb-3">Experience Level</div>
-            <div className="space-y-2">
-              {EXPERIENCE_LEVELS.map(l => (
-                <label key={l} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={expLevels.includes(l)}
-                    onChange={() => { toggleExpLevel(l); setCurrentPage(1) }}
-                    style={{ accentColor: '#16a34a' }}
-                  />
-                  <span className="text-sm text-gray-600">{l}</span>
-                </label>
-              ))}
+            <div style={{ borderTop: '1px solid #e5e7eb' }} className="pt-4">
+              <div className="text-sm font-semibold text-gray-800 mb-3">Experience Level</div>
+              <div className="space-y-2">
+                {EXPERIENCE_FILTERS.map(filter => (
+                  <label key={filter.label} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={expLevels.includes(filter.label)}
+                      onChange={() => { toggleExpLevel(filter.label); setCurrentPage(1) }}
+                      style={{ accentColor: '#16a34a' }}
+                    />
+                    <span className="text-sm text-gray-600">{filter.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
         </aside>
 
         {/* Results */}
