@@ -64,13 +64,6 @@ export default function Home() {
     if (e.key === 'Enter') handleSearch()
   }
 
-  const popular = [
-    'Software Engineer',
-    'Customer Service',
-    'Data Entry',
-    'Nurse',
-    'Accountant',
-  ]
 
   // Async Dijkstra-based featured jobs — sorted by MatchScore when user is logged in.
   // No location passed here (Home page has no GPS widget), so G uses stored user coords.
@@ -113,7 +106,7 @@ export default function Home() {
             style={{ color: '#fff', lineHeight: 1.1 }}
             className="text-4xl md:text-5xl font-extrabold mb-4"
           >
-            Find your next opportunity.
+            Your skills. Your place. Your next job.
           </h1>
 
           <p
@@ -160,32 +153,8 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Popular searches */}
-            <div className="flex flex-wrap items-center justify-center gap-2 px-2">            <span
-              style={{ color: 'rgba(255,255,255,0.5)' }}
-              className="text-xs"
-            >
-              Popular:
-            </span>
-
-            {popular.map(term => (
-              <button
-                key={term}
-                onClick={() => {
-                  setSearchQuery(term)
-                  navigate('search')
-                }}
-                style={{
-                  color: 'rgba(255,255,255,0.8)',
-                  textDecoration: 'underline',
-                  fontSize: 12,
-                }}
-                className="hover:text-white"
-              >
-                {term}
-              </button>
-            ))}
-          </div>
+          
+       
         </div>
       </div>
 
