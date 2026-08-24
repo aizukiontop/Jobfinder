@@ -2,6 +2,7 @@ import { AppProvider, useApp } from './context'
 
 import Header from './components/Header'
 import EmployerHeader from './components/EmployerHeader'
+import Footer from './components/Footer'
 
 import Home from './pages/Home'
 import Search from './pages/Search'
@@ -87,6 +88,8 @@ function AppContent() {
       style={{
         fontFamily: 'Inter, sans-serif',
         minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
       {isEmployerPage ? (
@@ -95,9 +98,11 @@ function AppContent() {
         <Header />
       )}
 
-      <main>
+      <main style={{ flex: 1 }}>
         {renderPage()}
       </main>
+
+      <Footer />
     </div>
   )
 }
