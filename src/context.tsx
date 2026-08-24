@@ -108,6 +108,14 @@ interface AppState {
 
   searchQuery: string
 
+  /** Persisted user location — survives Search ↔ JobDetail navigation */
+  userLat: number | null
+  userLng: number | null
+  userInsideCity: boolean | null
+  locMode: 'gps' | 'pin'
+  setUserLocation: (lat: number, lng: number, inside: boolean, mode: 'gps' | 'pin') => void
+  clearUserLocation: () => void
+
   navigate: (page: Page, jobId?: string | null) => void
 
   setUser: (user: User | null) => void
@@ -238,6 +246,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [prevPage, setPrevPage] = useState<Page | null>(null)
 
+  // ── Persisted user location (survives Search ↔ JobDetail navigation) ───────
+  const [userLat, setUserLat] = useState<number | null>(null)
+  const [userLng, setUserLng] = useState<number | null>(null)
+  const [userInsideCity, setUserInsideCity] = useState<boolean | null>(null)
+  const [locMode, setLocMode] = useState<'gps' | 'pin'>('gps')
+
   const [user, setUserState] = useState<User | null>(() => loadStorage('jf_user', null))
   const [employer, setEmployerState] = useState<Employer | null>(() => loadStorage('jf_employer', null))
 
@@ -270,6 +284,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => { localStorage.setItem('jf_posted', JSON.stringify(postedJobs)) }, [postedJobs])
   useEffect(() => { localStorage.setItem('jf_employer_jobs', JSON.stringify(employerJobs)) }, [employerJobs])
   useEffect(() => { localStorage.setItem('jf_applicants', JSON.stringify(allApplicants)) }, [allApplicants])
+
+  const setUserLocation = (lat: number, lng: number, inside: boolean, mode: 'gps' | 'pin') => {
+    setUserLat(lat)
+    setUserLng(lng)
+    setUserInsideCity(inside)
+    setLocMode(mode)
+  }
+
+  const clearUserLocation = () => {
+    setUserLat(null)
+    setUserLng(null)
+    setUserInsideCity(null)
+    setLocMode('gps')
+  }
 
   const navigate = (newPage: Page, jobId?: string | null) => {
     setPrevPage(page)
@@ -427,6 +455,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         employerJobs: myEmployerJobs,
         allApplicants: myApplicants,
         searchQuery,
+        userLat,
+        userLng,
+        userInsideCity,
+        locMode,
+        setUserLocation,
+        clearUserLocation,
         navigate,
         setUser,
         setEmployer,

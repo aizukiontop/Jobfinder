@@ -182,6 +182,7 @@ export default function MapView({
   const [showGraph, setShowGraph] = useState(false)
   const [graphLoaded, setGraphLoaded] = useState(false)
   const [currentZoom, setCurrentZoom] = useState(DEFAULT_MAP_ZOOM)
+  const [mapReady, setMapReady] = useState(false)
 
   // Panel state
   const [panelCollapsed, setPanelCollapsed] = useState(false)
@@ -264,6 +265,7 @@ export default function MapView({
         onMapClickRef.current?.(e.latlng.lat, e.latlng.lng)
       })
       mapRef.current = map
+      setMapReady(true)
 
       jobs.forEach(job => {
         if (!job.lat || !job.lng) return
@@ -334,10 +336,10 @@ export default function MapView({
     if (userLat != null && userLng != null) {
       userMarkerRef.current = L.marker([userLat, userLng], {
         icon: makeUserIcon(L), zIndexOffset: 1000,
-      }).bindTooltip('Your Location', { permanent: false }).addTo(mapRef.current)
+      }).bindTooltip('Your location', { permanent: false }).addTo(mapRef.current)
     }
-  }, [userLat, userLng])
-
+  }, [userLat, userLng, mapReady])
+  
   // ── Load and render graph overlay (unchanged) ─────────────────────────────
   const loadAndRenderGraph = useCallback(async () => {
     const L = LRef.current; const map = mapRef.current; const canvas = canvasRendererRef.current
@@ -443,7 +445,7 @@ export default function MapView({
           const [tLat, tLng] = graph.nodes[snapJob.nodeId]
           L.circleMarker([sLat, sLng], {
             radius: 7, color: '#fff', weight: 2, fillColor: '#16a34a', fillOpacity: 1,
-          }).bindTooltip(`Source: ${snapUser.nodeId}`, { permanent: false }).addTo(snapGroup)
+          }).bindTooltip('Your location', { permanent: false }).addTo(snapGroup)
           L.circleMarker([tLat, tLng], {
             radius: 7, color: '#fff', weight: 2, fillColor: '#0f2044', fillOpacity: 1,
           }).bindTooltip(`Target: ${snapJob.nodeId}`, { permanent: false }).addTo(snapGroup)

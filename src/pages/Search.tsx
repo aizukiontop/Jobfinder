@@ -73,7 +73,7 @@ const EXPERIENCE_FILTERS = [
 
 export default function Search() {
   const { allJobs, navigate, toggleSave, savedJobIds, searchQuery, setSearchQuery,
-          calculateMatchScore, user } = useApp()
+          calculateMatchScore, user, userLat, userLng, userInsideCity, locMode, setUserLocation } = useApp()
   const [localQuery, setLocalQuery] = useState(searchQuery)
   const [dateFilter, setDateFilter] = useState('Any time')
   const [empTypes, setEmpTypes] = useState<string[]>([])
@@ -84,14 +84,8 @@ export default function Search() {
   const [currentPage, setCurrentPage] = useState(1)
   const PER_PAGE = 8
 
-  // User geolocation
-  const [userLat, setUserLat] = useState<number | null>(null)
-  const [userLng, setUserLng] = useState<number | null>(null)
+  // User location is persisted in AppContext so it survives navigation to Job Details.
   const [locLoading, setLocLoading] = useState(false)
-  // null = not checked yet, true = inside, false = outside Angeles City
-  const [userInsideCity, setUserInsideCity] = useState<boolean | null>(null)
-  // 'gps' | 'pin' — which location source is active
-  const [locMode, setLocMode] = useState<'gps' | 'pin'>('gps')
   // true = map is awaiting a click to place the pin
   const [pinMode, setPinMode] = useState(false)
 
@@ -103,22 +97,19 @@ export default function Search() {
   useEffect(() => { setLocalQuery(searchQuery) }, [searchQuery])
 
   // Shared: apply any lat/lng as the user location (GPS or manual pin)
-  const applyLocation = useCallback((lat: number, lng: number) => {
-    setUserLat(lat)
-    setUserLng(lng)
+  const applyLocation = useCallback((lat: number, lng: number, mode: 'gps' | 'pin') => {
     import('../lib/geo').then(({ isWithinAngelesCity }) => {
-      setUserInsideCity(isWithinAngelesCity(lat, lng))
+      setUserLocation(lat, lng, isWithinAngelesCity(lat, lng), mode)
     })
-  }, [])
+  }, [setUserLocation])
 
   const requestLocation = () => {
     if (!navigator.geolocation) return
     setLocLoading(true)
     navigator.geolocation.getCurrentPosition(
       pos => {
-        applyLocation(pos.coords.latitude, pos.coords.longitude)
+        applyLocation(pos.coords.latitude, pos.coords.longitude, 'gps')
         setLocLoading(false)
-        setLocMode('gps')
         setPinMode(false)
       },
       () => setLocLoading(false),
@@ -129,8 +120,7 @@ export default function Search() {
   // Called when user clicks the map in pin mode
   const handleMapClick = useCallback((lat: number, lng: number) => {
     if (!pinMode) return
-    applyLocation(lat, lng)
-    setLocMode('pin')
+    applyLocation(lat, lng, 'pin')
     setPinMode(false) // exit pin-placement mode after first click
   }, [pinMode, applyLocation])
 
@@ -284,7 +274,7 @@ export default function Search() {
           <div style={{ display: 'flex', gap: 4 }}>
             {/* Option A — GPS */}
             <button
-              onClick={() => { setLocMode('gps'); setPinMode(false); requestLocation() }}
+              onClick={() => { setPinMode(false); requestLocation() }}
               disabled={locLoading}
               title="Use browser GPS location"
               style={{
@@ -302,7 +292,6 @@ export default function Search() {
             {/* Option B — Manual pin */}
             <button
               onClick={() => {
-                setLocMode('pin')
                 setPinMode(v => !v)
                 if (!showMap) { /* open map automatically so user can click */ }
               }}
