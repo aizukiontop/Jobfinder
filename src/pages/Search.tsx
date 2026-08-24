@@ -73,21 +73,26 @@ const EXPERIENCE_FILTERS = [
 
 export default function Search() {
   const { allJobs, navigate, toggleSave, savedJobIds, searchQuery, setSearchQuery,
-          calculateMatchScore, user, userLat, userLng, userInsideCity, locMode, setUserLocation } = useApp()
+          calculateMatchScore, user } = useApp()
   const [localQuery, setLocalQuery] = useState(searchQuery)
   const [dateFilter, setDateFilter] = useState('Any time')
   const [empTypes, setEmpTypes] = useState<string[]>([])
   const [expLevels, setExpLevels] = useState<string[]>([])
   const [barangayFilter, setBarangayFilter] = useState<string>('All Angeles City')
   const [showMap, setShowMap] = useState(true)
+  const [showMobileFilters, setShowMobileFilters] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const PER_PAGE = 8
 
-  // User location is persisted in AppContext so it survives navigation to Job Details.
+  // User geolocation
+  // ── Location state — persisted in AppContext so it survives navigation ───────
+  const {
+    userLat, userLng, userInsideCity, locMode,
+    setUserLocation, clearUserLocation,
+  } = useApp()
   const [locLoading, setLocLoading] = useState(false)
-  // true = map is awaiting a click to place the pin
-  const [pinMode, setPinMode] = useState(false)
+  const [pinMode, setPinMode] = useState(false)   // transient UI only — resets on unmount intentionally
 
   // Dijkstra-based match scores keyed by job.id — computed asynchronously
   // so each card re-renders as its Dijkstra result arrives.
@@ -222,6 +227,13 @@ export default function Search() {
     setExpLevels(prev => (prev.includes(l) ? prev.filter(x => x !== l) : [...prev, l]))
   const handleSearch = () => { setSearchQuery(localQuery); setCurrentPage(1) }
 
+  // Count of active filters for the mobile badge
+  const activeFilterCount =
+    (barangayFilter !== 'All Angeles City' ? 1 : 0) +
+    (dateFilter !== 'Any time' ? 1 : 0) +
+    empTypes.length +
+    expLevels.length
+
   return (
     <div style={{ background: '#f9fafb', minHeight: '100vh' }}>
       {/* Search bar */}
@@ -272,6 +284,20 @@ export default function Search() {
           </button>
           {/* ── Location: GPS + Pin two-button group ── */}
           <div style={{ display: 'flex', gap: 4 }}>
+            {/* Mobile Filters button — hidden on desktop where sidebar is visible */}
+            <button
+              onClick={() => setShowMobileFilters(true)}
+              style={{
+                border: `1px solid ${activeFilterCount > 0 ? '#0f2044' : '#d1d5db'}`,
+                borderRadius: 6,
+                color: activeFilterCount > 0 ? '#0f2044' : '#374151',
+                background: activeFilterCount > 0 ? '#f0f4ff' : '#fff',
+              }}
+              className="md:hidden px-3 py-2 text-sm font-medium flex items-center gap-1 hover:bg-gray-50"
+            >
+              <FilterIcon />
+              Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+            </button>
             {/* Option A — GPS */}
             <button
               onClick={() => { setPinMode(false); requestLocation() }}
@@ -325,6 +351,171 @@ export default function Search() {
           </button>
         </div>
       </div>
+
+      {/* ── Mobile Filter Drawer — only renders on mobile, only when open ── */}
+      {showMobileFilters && (
+        <div className="md:hidden">
+          {/* Backdrop */}
+          <div
+            onClick={() => setShowMobileFilters(false)}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+              zIndex: 1000,
+            }}
+          />
+          {/* Drawer panel — slides up from bottom */}
+          <div
+            style={{
+              position: 'fixed', bottom: 0, left: 0, right: 0,
+              background: '#fff',
+              borderRadius: '16px 16px 0 0',
+              zIndex: 1001,
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              boxShadow: '0 -4px 24px rgba(0,0,0,0.15)',
+            }}
+          >
+            {/* Drawer header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '16px 20px 12px',
+              borderBottom: '1px solid #e5e7eb',
+              position: 'sticky', top: 0, background: '#fff', zIndex: 1,
+            }}>
+              <span style={{ fontWeight: 700, fontSize: 16, color: '#111827' }}>
+                Filters {activeFilterCount > 0 && (
+                  <span style={{
+                    background: '#0f2044', color: '#fff',
+                    borderRadius: 999, fontSize: 11,
+                    padding: '1px 7px', marginLeft: 6,
+                  }}>
+                    {activeFilterCount}
+                  </span>
+                )}
+              </span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {activeFilterCount > 0 && (
+                  <button
+                    onClick={() => {
+                      setBarangayFilter('All Angeles City')
+                      setDateFilter('Any time')
+                      setEmpTypes([])
+                      setExpLevels([])
+                      setCurrentPage(1)
+                    }}
+                    style={{ fontSize: 13, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer' }}
+                  >
+                    Clear all
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowMobileFilters(false)}
+                  style={{
+                    background: '#f3f4f6', border: 'none', borderRadius: 999,
+                    width: 32, height: 32, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 18, color: '#374151',
+                  }}
+                  aria-label="Close filters"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Filter controls — identical to desktop sidebar */}
+            <div style={{ padding: '16px 20px 32px' }}>
+
+              {/* Barangay */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#111827', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <LocationIcon /> Barangay
+                </div>
+                <select
+                  value={barangayFilter}
+                  onChange={e => { setBarangayFilter(e.target.value); setCurrentPage(1) }}
+                  style={{
+                    border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14,
+                    width: '100%', padding: '8px 10px', background: '#fff', color: '#374151',
+                  }}
+                >
+                  <option value="All Angeles City">All Angeles City</option>
+                  {BARANGAY_NAMES.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+              </div>
+
+              {/* Date Posted */}
+              <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 16, marginBottom: 20 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#111827', marginBottom: 10 }}>Date Posted</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {DATE_OPTIONS.map(opt => (
+                    <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="mobile-date"
+                        checked={dateFilter === opt}
+                        onChange={() => { setDateFilter(opt); setCurrentPage(1) }}
+                        style={{ accentColor: '#16a34a', width: 16, height: 16 }}
+                      />
+                      <span style={{ fontSize: 14, color: '#374151' }}>{opt}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Employment Type */}
+              <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 16, marginBottom: 20 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#111827', marginBottom: 10 }}>Employment Type</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {EMPLOYMENT_FILTERS.map(filter => (
+                    <label key={filter.label} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={empTypes.includes(filter.label)}
+                        onChange={() => { toggleEmpType(filter.label); setCurrentPage(1) }}
+                        style={{ accentColor: '#16a34a', width: 16, height: 16 }}
+                      />
+                      <span style={{ fontSize: 14, color: '#374151' }}>{filter.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Experience Level */}
+              <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 16 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#111827', marginBottom: 10 }}>Experience Level</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {EXPERIENCE_FILTERS.map(filter => (
+                    <label key={filter.label} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={expLevels.includes(filter.label)}
+                        onChange={() => { toggleExpLevel(filter.label); setCurrentPage(1) }}
+                        style={{ accentColor: '#16a34a', width: 16, height: 16 }}
+                      />
+                      <span style={{ fontSize: 14, color: '#374151' }}>{filter.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Apply button */}
+              <button
+                onClick={() => setShowMobileFilters(false)}
+                style={{
+                  marginTop: 24, width: '100%',
+                  background: '#0f2044', color: '#fff',
+                  border: 'none', borderRadius: 8,
+                  padding: '14px', fontSize: 15, fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Show {sorted.length} result{sorted.length !== 1 ? 's' : ''}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col lg:flex-row gap-4">
         {/* Filters sidebar */}
