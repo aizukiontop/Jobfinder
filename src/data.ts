@@ -41,6 +41,6 @@ export const CATEGORIES = [
   { name: 'Administrative' },
 ]
 
-export const EMPLOYMENT_TYPES = ['Full-time', 'Part-time', 'Contract', 'Temporary', 'Internship']
+export const EMPLOYMENT_TYPES = ['Full-time', 'Part-time', 'Contract', 'Temporary']
 export const EXPERIENCE_LEVELS = ['Entry level', 'Associate', 'Mid-Senior level', 'Director', 'Executive']
 export const WORK_ARRANGEMENTS = ['On-site', 'Hybrid', 'Remote']

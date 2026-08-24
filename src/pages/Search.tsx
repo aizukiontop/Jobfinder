@@ -63,7 +63,6 @@ const EMPLOYMENT_FILTERS = [
   { label: 'Full-time', values: ['Full-time'] },
   { label: 'Part-time', values: ['Part-time'] },
   { label: 'Contract/Temporary', values: ['Contract', 'Temporary'] },
-  { label: 'Internship', values: ['Internship'] },
 ]
 
 const EXPERIENCE_FILTERS = [
