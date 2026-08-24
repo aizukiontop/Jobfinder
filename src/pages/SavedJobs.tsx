@@ -33,7 +33,6 @@ export default function SavedJobs() {
 
         {savedJobs.length === 0 ? (
           <div className="text-center py-20">
-            <div className="text-5xl mb-4">🔖</div>
             <h2 className="text-lg font-semibold text-gray-700 mb-2">No saved jobs yet.</h2>
             <p className="text-sm text-gray-500 mb-6">
               Browse jobs and click the bookmark icon to save them here.

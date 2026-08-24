@@ -31,7 +31,6 @@ export default function Applications() {
 
         {applications.length === 0 ? (
           <div className="text-center py-20">
-            <div className="text-5xl mb-4">📋</div>
             <h2 className="text-lg font-semibold text-gray-700 mb-2">No applications yet.</h2>
             <p className="text-sm text-gray-500 mb-6">
               Find a job and click Apply Now to get started.
