@@ -30,7 +30,7 @@ export default function EmployerDashboard() {
   const recentJobs = employerJobs.slice(0, 5)
 
   return (
-    <div style={{ background: '#f9fafb', minHeight: '100vh' }} className="py-8 px-4">
+    <div style={{ background: '#f9fafb', flex: 1 }} className="py-8 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Welcome */}
         <div className="mb-8">

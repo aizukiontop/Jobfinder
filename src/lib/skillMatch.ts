@@ -87,3 +87,38 @@ export function preferredSkillScore(
 
   return total / n
 }
+
+export interface SkillMatchDetail {
+  required: string
+  bestMatch: string | null
+  similarity: number
+}
+
+export interface SkillMatchBreakdown {
+  score: number
+  details: SkillMatchDetail[]
+}
+
+export function skillMatchBreakdown(
+  requiredSkills: string[],
+  userSkills: string[]
+): SkillMatchBreakdown {
+  const details: SkillMatchDetail[] = requiredSkills.map(ri => {
+    let bestMatch: string | null = null
+    let similarity = 0
+    for (const uj of userSkills) {
+      const s = sim(ri, uj)
+      if (s > similarity) {
+        similarity = s
+        bestMatch = uj
+      }
+    }
+    return { required: ri, bestMatch, similarity }
+  })
+
+  const score = details.length === 0
+    ? 0
+    : details.reduce((sum, d) => sum + d.similarity, 0) / details.length
+
+  return { score, details }
+}

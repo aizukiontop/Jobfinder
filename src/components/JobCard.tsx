@@ -56,11 +56,11 @@ export default function JobCard({ job, compact = false, showMatch = false }: Job
   const { navigate, toggleSave, savedJobIds, user, calculateMatchScore } = useApp()
   const saved = savedJobIds.includes(job.id)
 
-  // Async Dijkstra-based match score (no location available on Home page — skill-only)
   const [matchScore, setMatchScore] = useState(0)
   useEffect(() => {
     if (!showMatch || !user) { setMatchScore(0); return }
-    calculateMatchScore(job).then(s => setMatchScore(Math.round(s * 100)))
+    calculateMatchScore(job, user.lat ?? undefined, user.lng ?? undefined)
+      .then(s => setMatchScore(Math.round(s * 100)))
   }, [showMatch, user, job, calculateMatchScore])
 
   const timeLabel = job.daysAgo === 0

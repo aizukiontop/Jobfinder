@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useApp } from '../context'
 import { CATEGORIES } from '../data'
 import JobCard from '../components/JobCard'
-import angelesBackground from '../assets/angeles-background.png'
+import angelesBackground from '../assets/angeles-background.webp'
 
 function SearchIcon() {
   return (

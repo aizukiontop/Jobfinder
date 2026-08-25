@@ -46,7 +46,7 @@ export default function SignIn() {
     <div
       style={{
         background: '#f9fafb',
-        minHeight: '100vh',
+        flex: 1,
       }}
       className="flex items-center justify-center px-4 py-12"
     >

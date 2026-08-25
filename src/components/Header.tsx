@@ -4,7 +4,7 @@ import type { Page } from '../types'
 import jobfinderLogo from '../assets/jobfinder-logo.png'
 
 export default function Header() {
-  const { page, navigate, user, employer, setUser, savedJobIds, applications } = useApp()
+  const { page, navigate, user, employer, isAdmin, setUser, savedJobIds, applications } = useApp()
   const [menuOpen, setMenuOpen] = useState(false)
 
   const seekerNavItems: { label: string; page: Page }[] = [
@@ -22,7 +22,10 @@ export default function Header() {
     { label: 'Company Profile', page: 'employer-profile' },
   ]
 
-  const navItems = employer ? employerNavItems : seekerNavItems
+  const baseNavItems = employer ? employerNavItems : seekerNavItems
+  const navItems = isAdmin
+    ? [...baseNavItems, { label: 'Users', page: 'admin' as Page }]
+    : baseNavItems
 
   const handleNavigate = (targetPage: Page) => {
     navigate(targetPage)
@@ -108,16 +111,6 @@ export default function Header() {
         <div className="hidden md:flex items-center gap-3 flex-shrink-0">
           {user || employer ? (
             <>
-              <span className="text-sm text-gray-500">
-                Welcome back,{' '}
-                <span
-                  style={{ color: '#0f2044' }}
-                  className="font-medium"
-                >
-                  {user ? user.firstName : employer?.companyName}
-                </span>
-              </span>
-
               <button
                 onClick={() => setUser(null)}
                 className="text-sm font-medium text-gray-700 hover:text-gray-900"
@@ -215,16 +208,6 @@ export default function Header() {
             <div className="border-t border-gray-200 mt-2 pt-2 pb-2">
               {user || employer ? (
                 <>
-                  <div className="px-3 py-2 text-sm text-gray-500">
-                    Welcome back,{' '}
-                    <span
-                      style={{ color: '#0f2044' }}
-                      className="font-medium"
-                    >
-                      {user ? user.firstName : employer?.companyName}
-                    </span>
-                  </div>
-
                   <button
                     onClick={() => {
                       setUser(null)

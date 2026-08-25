@@ -3,7 +3,8 @@ import type { Page } from '../types'
 import jobfinderLogo from '../assets/jobfinder-logo.png'
 
 export default function EmployerHeader() {
-  const { page, navigate, employer, setEmployer } = useApp()
+  const { page, navigate, employer, setEmployer, allApplicants } = useApp()
+  const newApplicants = allApplicants.filter(a => a.status === 'applied').length
 
   const navItems: { label: string; page: Page }[] = [
     { label: 'Dashboard', page: 'employer-dashboard' },
@@ -81,7 +82,20 @@ export default function EmployerHeader() {
         <div className="flex items-center gap-3 flex-shrink-0">
 
           {/* Notification bell */}
-          <button className="relative text-gray-500 hover:text-gray-700">
+          <button
+            onClick={() => navigate('employer-applicants')}
+            aria-label={
+              newApplicants > 0
+                ? `${newApplicants} new applicant${newApplicants === 1 ? '' : 's'}`
+                : 'No new applicants'
+            }
+            title={
+              newApplicants > 0
+                ? `${newApplicants} new applicant${newApplicants === 1 ? '' : 's'}`
+                : 'No new applicants'
+            }
+            className="relative text-gray-500 hover:text-gray-700"
+          >
             <svg
               width="18"
               height="18"
@@ -94,6 +108,7 @@ export default function EmployerHeader() {
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
 
+            {newApplicants > 0 && (
             <span
               style={{
                 background: '#16a34a',
@@ -105,8 +120,9 @@ export default function EmployerHeader() {
               }}
               className="absolute w-4 h-4 flex items-center justify-center font-bold leading-none"
             >
-              2
+              {newApplicants > 9 ? '9+' : newApplicants}
             </span>
+            )}
           </button>
 
           {/* Company avatar + name */}

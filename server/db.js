@@ -32,8 +32,52 @@ export function openDatabase(dbPath) {
   return db
 }
 
+function rebuildJobsConstraint(db) {
+  const table = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='jobs'").get()
+  if (!table) return false
+  if (!table.sql.includes("CHECK(application_mode <> 'internal' OR owner_user_id IS NOT NULL)")) return false
+
+  const rebuilt = table.sql
+    .replace('CREATE TABLE jobs', 'CREATE TABLE jobs_migrated')
+    .replace('CREATE TABLE IF NOT EXISTS jobs', 'CREATE TABLE jobs_migrated')
+    .replace(
+      "CHECK(application_mode <> 'internal' OR owner_user_id IS NOT NULL)",
+      "CHECK(application_mode <> 'internal' OR owner_user_id IS NOT NULL OR data_source = 'external-verified')"
+    )
+
+  db.pragma('foreign_keys = OFF')
+  try {
+    db.transaction(() => {
+      db.exec(rebuilt)
+      db.exec('INSERT INTO jobs_migrated SELECT * FROM jobs')
+      db.exec('DROP TABLE jobs')
+      db.exec('ALTER TABLE jobs_migrated RENAME TO jobs')
+      db.exec("INSERT OR IGNORE INTO schema_migrations(version, name, applied_at) VALUES (2, 'verified jobs may use internal applications', strftime('%Y-%m-%dT%H:%M:%fZ','now'))")
+    })()
+
+    const violations = db.pragma('foreign_key_check')
+    if (violations.length > 0) {
+      throw new Error(`jobs table rebuild left ${violations.length} foreign key violations`)
+    }
+  } finally {
+    db.pragma('foreign_keys = ON')
+  }
+  return true
+}
+
+function ensureColumn(db, table, column, definition) {
+  const existing = db.pragma(`table_info(${table})`)
+  if (existing.some((col) => col.name === column)) return
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
+}
+
 export function migrate(db) {
-  db.exec(readFileSync(schemaPath, 'utf8'))
+  const schema = readFileSync(schemaPath, 'utf8')
+  db.exec(schema)
+  if (rebuildJobsConstraint(db)) {
+    db.exec(schema)
+  }
+  ensureColumn(db, 'job_seeker_profiles', 'photo_key', 'TEXT')
 }
 
 function ensureSkill(db, name) {

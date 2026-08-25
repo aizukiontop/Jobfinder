@@ -13,6 +13,7 @@ import SignIn from './pages/SignIn'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
+import Admin from './pages/Admin'
 import Profile from './pages/Profile'
 import PostJob from './pages/PostJob'
 import JobDetail from './pages/JobDetail'
@@ -58,6 +59,9 @@ function AppContent() {
 
       case 'reset':
         return <ResetPassword />
+
+      case 'admin':
+        return <Admin />
 
       case 'profile':
         return <Profile />
@@ -147,7 +151,7 @@ function AppContent() {
         </div>
       )}
 
-      <main style={{ flex: 1 }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {renderPage()}
       </main>
 

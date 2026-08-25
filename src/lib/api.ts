@@ -81,6 +81,46 @@ export interface SessionAccount {
   id: string
   email: string
   role: 'job-seeker' | 'employer'
+  isAdmin?: boolean
+}
+
+export interface AdminJob {
+  id: string
+  title: string
+  status: 'draft' | 'active' | 'closed'
+  employmentType: string
+  applicants: number
+  postedAt: string
+}
+
+export interface AdminUser {
+  id: string
+  jobs: AdminJob[]
+  email: string
+  role: 'job-seeker' | 'employer'
+  active: boolean
+  name: string
+  detail: string
+  savedJobs: number
+  applications: number
+  jobsPosted: number
+  hasResume: boolean
+  hasPhoto: boolean
+  createdAt: string
+  lastSeen: string | null
+}
+
+export interface AdminUsersResponse {
+  items: AdminUser[]
+  totals: { users: number; seekers: number; employers: number }
+}
+
+export function deleteAdminJob(jobId: string): Promise<void> {
+  return request<void>(`/admin/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' })
+}
+
+export function fetchAdminUsers(signal?: AbortSignal): Promise<AdminUsersResponse> {
+  return request<AdminUsersResponse>('/admin/users', { signal })
 }
 
 export interface SessionResponse {
@@ -174,6 +214,21 @@ export function deleteResume(): Promise<void> {
   return request<void>('/me/resume', { method: 'DELETE' })
 }
 
+export async function uploadPhoto(file: File): Promise<string> {
+  const form = new FormData()
+  form.append('photo', file)
+  const body = await request<{ photo: string }>('/me/photo', {
+    method: 'PUT',
+    body: form,
+    raw: true,
+  })
+  return body.photo
+}
+
+export function deletePhoto(): Promise<void> {
+  return request<void>('/me/photo', { method: 'DELETE' })
+}
+
 export const resumeDownloadUrl = `${BASE}/me/resume/download`
 
 export function applicationResumeUrl(applicationId: string): string {
@@ -204,7 +259,8 @@ export interface ApplicationInput {
   email: string
   phone?: string
   coverLetter?: string
-  resume: File
+  resume?: File | null
+  useProfileResume?: boolean
 }
 
 export async function applyToJob(
@@ -217,7 +273,8 @@ export async function applyToJob(
   form.append('email', input.email)
   form.append('phone', input.phone ?? '')
   form.append('coverLetter', input.coverLetter ?? '')
-  form.append('resume', input.resume)
+  form.append('useProfileResume', input.useProfileResume ? 'true' : 'false')
+  if (input.resume) form.append('resume', input.resume)
 
   const body = await request<{ application: Application }>(
     `/jobs/${encodeURIComponent(jobId)}/applications`,

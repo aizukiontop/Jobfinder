@@ -120,7 +120,7 @@ export default function EmployerPostJob() {
 
   if (submitted) {
     return (
-      <div style={{ background: '#f9fafb', minHeight: '100vh' }} className="flex items-center justify-center px-4">
+      <div style={{ background: '#f9fafb', flex: 1 }} className="flex items-center justify-center px-4">
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }} className="w-full max-w-sm p-8 text-center">
           <div style={{ background: '#dcfce7', borderRadius: 999 }} className="w-14 h-14 flex items-center justify-center mx-auto mb-4">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5">
@@ -143,7 +143,7 @@ export default function EmployerPostJob() {
   }
 
   return (
-    <div style={{ background: '#f9fafb', minHeight: '100vh' }} className="py-8 px-4">
+    <div style={{ background: '#f9fafb', flex: 1 }} className="py-8 px-4">
       <div className="max-w-3xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Post a Job</h1>

@@ -23,7 +23,7 @@ export default function SavedJobs() {
   const savedJobs = allJobs.filter(j => savedJobIds.includes(j.id))
 
   return (
-    <div style={{ background: '#f9fafb', minHeight: '100vh' }}>
+    <div style={{ background: '#f9fafb', flex: 1 }}>
       <div className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Saved Jobs</h1>
         <p className="text-sm text-gray-500 mb-8">

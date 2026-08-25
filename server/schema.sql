@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS job_seeker_profiles (
   barangay TEXT,
   latitude REAL CHECK(latitude BETWEEN -90 AND 90),
   longitude REAL CHECK(longitude BETWEEN -180 AND 180),
+  photo_key TEXT,
   updated_at TEXT NOT NULL
 ) STRICT;
 

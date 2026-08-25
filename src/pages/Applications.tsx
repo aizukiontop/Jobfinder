@@ -24,7 +24,7 @@ export default function Applications() {
   }
 
   return (
-    <div style={{ background: '#f9fafb', minHeight: '100vh' }}>
+    <div style={{ background: '#f9fafb', flex: 1 }}>
       <div className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Your Applications</h1>
         <p className="text-sm text-gray-500 mb-8">Track the status of jobs you&#39;ve applied to.</p>

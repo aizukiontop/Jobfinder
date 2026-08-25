@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
-import { createReadStream, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
+import { copyFileSync, createReadStream, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import express from 'express'
 import rateLimit from 'express-rate-limit'
@@ -9,6 +9,7 @@ import multer from 'multer'
 import { z } from 'zod'
 import { getJobSkills, getUserSkills, initializeDatabase, normalizeSkill, nowIso, openDatabase, replaceJobSkills, replaceUserSkills } from './db.js'
 import { createMailer, passwordResetEmail } from './mailer.js'
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, passwordProblems } from './password.js'
 import { ApiError, asyncRoute, authenticate, clearSessionCookie, createSession, hashPassword, originGuard, requireRole, sha256, verifyPassword, writeSessionCookie } from './security.js'
 
 const APPLICATION_STATUSES = ['applied', 'reviewing', 'shortlisted', 'interview', 'hired', 'rejected']
@@ -22,18 +23,27 @@ const EMPLOYER_FIELDS = new Set([
   'contactEmail', 'contactPhone', 'website', 'companySize',
 ])
 
+const strongPassword = z.string()
+  .min(PASSWORD_MIN_LENGTH)
+  .max(PASSWORD_MAX_LENGTH)
+  .superRefine((value, ctx) => {
+    for (const problem of passwordProblems(value)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Password needs: ${problem.toLowerCase()}` })
+    }
+  })
+
 const registerSchema = z.discriminatedUnion('role', [
   z.object({
     role: z.literal('job-seeker'),
     email: z.string().trim().email().max(254),
-    password: z.string().min(8).max(128),
+    password: strongPassword,
     firstName: z.string().trim().min(1).max(80),
     lastName: z.string().trim().min(1).max(80),
   }).strict(),
   z.object({
     role: z.literal('employer'),
     email: z.string().trim().email().max(254),
-    password: z.string().min(8).max(128),
+    password: strongPassword,
     companyName: z.string().trim().min(1).max(160),
     industry: z.string().trim().min(1).max(120),
     contactName: z.string().trim().min(1).max(160),
@@ -46,7 +56,7 @@ const forgotPasswordSchema = z.object({
 
 const resetPasswordSchema = z.object({
   token: z.string().trim().min(20).max(200),
-  password: z.string().min(8).max(128),
+  password: strongPassword,
 }).strict()
 
 const loginSchema = z.object({
@@ -61,6 +71,7 @@ const applicationSchema = z.object({
   email: z.string().trim().email().max(254),
   phone: z.string().trim().max(40).optional().default(''),
   coverLetter: z.string().trim().max(10_000).optional().default(''),
+  useProfileResume: z.enum(['true', 'false']).optional().default('false'),
 })
 
 const jobInputSchema = z.object({
@@ -179,7 +190,7 @@ function seekerProfile(db, user) {
     resume: resume ? { id: resume.id, name: resume.original_name, updatedAt: resume.created_at } : null,
     resumeName: resume?.original_name ?? '',
     resumeDate: resume?.created_at ?? '',
-    photo: '',
+    photo: row.photo_key ? `/api/me/photo?v=${row.photo_key.slice(0, 8)}` : '',
   }
 }
 
@@ -201,9 +212,9 @@ function employerProfile(db, user) {
   }
 }
 
-function sessionDto(db, user) {
+function sessionDto(db, user, admin = false) {
   return {
-    account: { id: user.id, email: user.email, role: user.role },
+    account: { id: user.id, email: user.email, role: user.role, isAdmin: admin },
     profile: user.role === 'job-seeker' ? seekerProfile(db, user) : employerProfile(db, user),
   }
 }
@@ -248,6 +259,9 @@ function applicationDto(row) {
     matchScorePercent: Math.round(row.skill_match_score * 100),
     matchScore: Math.round(row.skill_match_score * 100),
     resume: { id: row.resume_file_id, name: row.resume_name },
+    photo: row.applicant_photo_key
+      ? `/api/applications/${row.id}/photo?v=${row.applicant_photo_key.slice(0, 8)}`
+      : '',
     resumeName: row.resume_name,
   }
 }
@@ -271,12 +285,22 @@ export function createApp(config) {
   mkdirSync(config.uploadDir, { recursive: true })
   const tempDir = path.join(config.uploadDir, 'tmp')
   const resumeDir = path.join(config.uploadDir, 'resumes')
+  const photoDir = path.join(config.uploadDir, 'photos')
   mkdirSync(tempDir, { recursive: true })
   mkdirSync(resumeDir, { recursive: true })
+  mkdirSync(photoDir, { recursive: true })
 
   const db = openDatabase(config.dbPath)
   initializeDatabase(db, { seed: config.seedOnStart })
   const requireAuth = authenticate(db)
+  const adminEmails = new Set(config.adminEmails ?? [])
+  const isAdmin = (user) => adminEmails.has(String(user?.email ?? '').toLowerCase())
+  const requireAdmin = (req, _res, next) => {
+    if (!isAdmin(req.auth)) {
+      return next(new ApiError(403, 'FORBIDDEN', 'You do not have permission to perform this action.'))
+    }
+    next()
+  }
   const app = express()
   app.disable('x-powered-by')
   app.set('trust proxy', 'loopback')
@@ -353,7 +377,7 @@ export function createApp(config) {
     })()
     const session = createSession(db, id, config.sessionTtlSeconds)
     writeSessionCookie(res, session.token, session.expires, config.secureCookies)
-    res.status(201).json(sessionDto(db, { id, email, role: input.role }))
+    res.status(201).json(sessionDto(db, { id, email, role: input.role }, isAdmin({ email })))
   }))
 
   app.post('/api/auth/login', authLimiter, asyncRoute(async (req, res) => {
@@ -364,7 +388,7 @@ export function createApp(config) {
     const ttl = input.rememberMe ? config.rememberTtlSeconds : config.sessionTtlSeconds
     const session = createSession(db, user.id, ttl)
     writeSessionCookie(res, session.token, session.expires, config.secureCookies)
-    res.json(sessionDto(db, user))
+    res.json(sessionDto(db, user, isAdmin(user)))
   }))
 
 
@@ -421,7 +445,7 @@ export function createApp(config) {
     res.json({ ok: true })
   }))
 
-  app.get('/api/auth/me', requireAuth, (req, res) => res.json(sessionDto(db, req.auth)))
+  app.get('/api/auth/me', requireAuth, (req, res) => res.json(sessionDto(db, req.auth, isAdmin(req.auth))))
   app.post('/api/auth/logout', requireAuth, (req, res) => {
     db.prepare('DELETE FROM sessions WHERE id=?').run(req.auth.sessionId)
     clearSessionCookie(res, config.secureCookies)
@@ -449,7 +473,7 @@ export function createApp(config) {
     res.json({ job: jobDto(db, row) })
   })
 
-  app.get('/api/me/profile', requireAuth, (req, res) => res.json({ profile: sessionDto(db, req.auth).profile }))
+  app.get('/api/me/profile', requireAuth, (req, res) => res.json({ profile: sessionDto(db, req.auth, isAdmin(req.auth)).profile }))
 
   app.patch('/api/me/profile', requireAuth, (req, res, next) => {
     try {
@@ -491,7 +515,7 @@ export function createApp(config) {
         `).run(merged.contactName, merged.companyName, merged.industry, merged.description, merged.address,
           merged.contactEmail, merged.contactPhone, merged.website, merged.companySize, timestamp, req.auth.id)
       }
-      res.json({ profile: sessionDto(db, req.auth).profile })
+      res.json({ profile: sessionDto(db, req.auth, isAdmin(req.auth)).profile })
     } catch (error) { next(error) }
   })
 
@@ -575,6 +599,149 @@ export function createApp(config) {
     res.type(file.mime_type).set('X-Content-Type-Options', 'nosniff').download(path.join(resumeDir, file.storage_key), file.original_name)
   })
 
+  const photoUpload = multer({
+    storage: multer.diskStorage({ destination: tempDir, filename: (_req, _file, cb) => cb(null, randomUUID()) }),
+    limits: { fileSize: 2 * 1024 * 1024, files: 1, fields: 0 },
+  })
+
+  const PHOTO_TYPES = new Map([
+    ['image/png', '.png'],
+    ['image/jpeg', '.jpg'],
+    ['image/webp', '.webp'],
+  ])
+
+  app.put('/api/me/photo', requireAuth, requireRole('job-seeker'), photoUpload.single('photo'), asyncRoute(async (req, res) => {
+    if (!req.file) throw new ApiError(400, 'PHOTO_REQUIRED', 'Choose a PNG, JPEG or WebP image.')
+    let storedKey
+    try {
+      const detected = await fileTypeFromFile(req.file.path)
+      if (!detected || !PHOTO_TYPES.has(detected.mime)) {
+        throw new ApiError(400, 'INVALID_PHOTO', 'Only genuine PNG, JPEG or WebP images are accepted.')
+      }
+      storedKey = `${randomUUID()}${PHOTO_TYPES.get(detected.mime)}`
+      renameSync(req.file.path, path.join(photoDir, storedKey))
+    } catch (error) {
+      removeIfPresent(req.file?.path)
+      throw error
+    }
+
+    const previous = db.prepare('SELECT photo_key FROM job_seeker_profiles WHERE user_id=?').get(req.auth.id)
+    db.prepare('UPDATE job_seeker_profiles SET photo_key=?,updated_at=? WHERE user_id=?')
+      .run(storedKey, nowIso(), req.auth.id)
+    if (previous?.photo_key && previous.photo_key !== storedKey) {
+      removeIfPresent(path.join(photoDir, previous.photo_key))
+    }
+
+    res.status(201).json({ photo: `/api/me/photo?v=${storedKey.slice(0, 8)}` })
+  }))
+
+  app.get('/api/me/photo', requireAuth, requireRole('job-seeker'), (req, res, next) => {
+    const row = db.prepare('SELECT photo_key FROM job_seeker_profiles WHERE user_id=?').get(req.auth.id)
+    if (!row?.photo_key) return next(new ApiError(404, 'PHOTO_NOT_FOUND', 'No profile photo has been uploaded.'))
+    res.set('X-Content-Type-Options', 'nosniff')
+    res.set('Cache-Control', 'private, max-age=300')
+    res.sendFile(path.join(photoDir, row.photo_key))
+  })
+
+  app.delete('/api/me/photo', requireAuth, requireRole('job-seeker'), (req, res) => {
+    const row = db.prepare('SELECT photo_key FROM job_seeker_profiles WHERE user_id=?').get(req.auth.id)
+    if (row?.photo_key) {
+      db.prepare('UPDATE job_seeker_profiles SET photo_key=NULL,updated_at=? WHERE user_id=?').run(nowIso(), req.auth.id)
+      removeIfPresent(path.join(photoDir, row.photo_key))
+    }
+    res.status(204).end()
+  })
+
+  app.get('/api/admin/users', requireAuth, requireAdmin, (req, res) => {
+    const rows = db.prepare(`
+      SELECT
+        u.id, u.email, u.role, u.is_active, u.created_at,
+        s.first_name, s.last_name, s.headline, s.photo_key, s.resume_file_id,
+        e.company_name, e.industry,
+        (SELECT count(*) FROM saved_jobs sj WHERE sj.user_id = u.id) AS saved_jobs,
+        (SELECT count(*) FROM applications a WHERE a.applicant_user_id = u.id) AS applications,
+        (SELECT count(*) FROM jobs j WHERE j.owner_user_id = u.id) AS jobs_posted,
+        (SELECT max(sn.last_seen_at) FROM sessions sn WHERE sn.user_id = u.id) AS last_seen
+      FROM users u
+      LEFT JOIN job_seeker_profiles s ON s.user_id = u.id
+      LEFT JOIN employer_profiles e ON e.user_id = u.id
+      ORDER BY u.created_at DESC
+    `).all()
+
+    const postings = db.prepare(`
+      SELECT
+        j.id, j.owner_user_id, j.title, j.status, j.employment_type, j.date_posted, j.created_at,
+        (SELECT count(*) FROM applications a WHERE a.job_id = j.id) AS applicant_count
+      FROM jobs j
+      WHERE j.owner_user_id IS NOT NULL
+      ORDER BY j.created_at DESC
+    `).all()
+
+    const byOwner = new Map()
+    for (const job of postings) {
+      const list = byOwner.get(job.owner_user_id) ?? []
+      list.push({
+        id: job.id,
+        title: job.title,
+        status: job.status,
+        employmentType: job.employment_type,
+        applicants: job.applicant_count,
+        postedAt: job.date_posted ?? job.created_at,
+      })
+      byOwner.set(job.owner_user_id, list)
+    }
+
+    res.json({
+      items: rows.map((row) => ({
+        id: row.id,
+        email: row.email,
+        role: row.role,
+        jobs: byOwner.get(row.id) ?? [],
+        active: row.is_active === 1,
+        name: row.role === 'employer'
+          ? row.company_name
+          : `${row.first_name ?? ''} ${row.last_name ?? ''}`.trim(),
+        detail: row.role === 'employer' ? row.industry : row.headline,
+        savedJobs: row.saved_jobs,
+        applications: row.applications,
+        jobsPosted: row.jobs_posted,
+        hasResume: Boolean(row.resume_file_id),
+        hasPhoto: Boolean(row.photo_key),
+        createdAt: row.created_at,
+        lastSeen: row.last_seen,
+      })),
+      totals: {
+        users: rows.length,
+        seekers: rows.filter((r) => r.role === 'job-seeker').length,
+        employers: rows.filter((r) => r.role === 'employer').length,
+      },
+    })
+  })
+
+  app.delete('/api/admin/jobs/:jobId', requireAuth, requireAdmin, (req, res, next) => {
+    const job = db.prepare('SELECT id, title, data_source FROM jobs WHERE id=?').get(req.params.jobId)
+    if (!job) return next(new ApiError(404, 'JOB_NOT_FOUND', 'Job not found.'))
+
+    if (job.data_source !== 'employer-created') {
+      return next(new ApiError(409, 'SEEDED_JOB',
+        'Verified listings come from the dataset and would return on the next seed. Remove them from jobs.verified.json instead.'))
+    }
+
+    const applications = db.prepare('SELECT count(*) AS count FROM applications WHERE job_id=?').get(job.id).count
+    if (applications > 0) {
+      return next(new ApiError(409, 'JOB_HAS_APPLICATIONS',
+        `This posting has ${applications} application${applications === 1 ? '' : 's'}. Deleting it would destroy those records.`))
+    }
+
+    db.transaction(() => {
+      db.prepare('DELETE FROM saved_jobs WHERE job_id=?').run(job.id)
+      db.prepare('DELETE FROM job_skills WHERE job_id=?').run(job.id)
+      db.prepare('DELETE FROM jobs WHERE id=?').run(job.id)
+    })()
+
+    res.status(204).end()
+  })
+
   app.get('/api/me/saved-jobs', requireAuth, requireRole('job-seeker'), (req, res) => {
     const jobIds = db.prepare('SELECT job_id FROM saved_jobs WHERE user_id=? ORDER BY created_at DESC').all(req.auth.id).map((r) => r.job_id)
     res.json({ jobIds })
@@ -654,8 +821,10 @@ export function createApp(config) {
 
   app.get('/api/me/applications', requireAuth, requireRole('job-seeker'), (req, res) => {
     const rows = db.prepare(`
-      SELECT a.*, f.original_name AS resume_name FROM applications a
+      SELECT a.*, f.original_name AS resume_name, p.photo_key AS applicant_photo_key
+      FROM applications a
       JOIN stored_files f ON f.id=a.resume_file_id
+      LEFT JOIN job_seeker_profiles p ON p.user_id=a.applicant_user_id
       WHERE a.applicant_user_id=? ORDER BY a.applied_at DESC
     `).all(req.auth.id)
     res.json({ items: rows.map(applicationDto) })
@@ -674,7 +843,38 @@ export function createApp(config) {
       if (db.prepare('SELECT 1 FROM applications WHERE job_id=? AND applicant_user_id=?').get(job.id, req.auth.id)) {
         throw new ApiError(409, 'DUPLICATE_APPLICATION', 'You have already applied for this job.')
       }
-      accepted = await acceptResume(req.file, req.auth.id, 'application-resume')
+      if (input.useProfileResume === 'true' && !req.file) {
+        const saved = db.prepare(`
+          SELECT f.storage_key, f.original_name, f.mime_type, f.size_bytes, f.sha256
+          FROM job_seeker_profiles p
+          JOIN stored_files f ON f.id = p.resume_file_id
+          WHERE p.user_id = ? AND f.kind = 'profile-resume'
+        `).get(req.auth.id)
+
+        if (!saved) {
+          throw new ApiError(400, 'NO_PROFILE_RESUME', 'Upload a resume to your profile before using it to apply.')
+        }
+
+        const copyId = randomUUID()
+        const storageKey = `${copyId}${path.extname(saved.storage_key)}`
+        const finalPath = path.join(resumeDir, storageKey)
+        copyFileSync(path.join(resumeDir, saved.storage_key), finalPath)
+
+        accepted = {
+          id: copyId,
+          ownerUserId: req.auth.id,
+          kind: 'application-resume',
+          storageKey,
+          finalPath,
+          originalName: saved.original_name,
+          mimeType: saved.mime_type,
+          sizeBytes: saved.size_bytes,
+          sha256: saved.sha256,
+          createdAt: nowIso(),
+        }
+      } else {
+        accepted = await acceptResume(req.file, req.auth.id, 'application-resume')
+      }
       const applicantSkills = getUserSkills(db, req.auth.id)
       const requiredSkills = getJobSkills(db, job.id, 'required')
       const score = scoreSkills(requiredSkills, applicantSkills)
@@ -695,7 +895,7 @@ export function createApp(config) {
           VALUES (?,NULL,'applied',?,?)
         `).run(id, req.auth.id, timestamp)
       })()
-      const row = db.prepare(`SELECT a.*, f.original_name AS resume_name FROM applications a JOIN stored_files f ON f.id=a.resume_file_id WHERE a.id=?`).get(id)
+      const row = db.prepare(`SELECT a.*, f.original_name AS resume_name, p.photo_key AS applicant_photo_key FROM applications a JOIN stored_files f ON f.id=a.resume_file_id LEFT JOIN job_seeker_profiles p ON p.user_id=a.applicant_user_id WHERE a.id=?`).get(id)
       res.status(201).json({ application: applicationDto(row) })
     } catch (error) {
       removeIfPresent(req.file?.path)
@@ -710,8 +910,10 @@ export function createApp(config) {
     if (req.query.jobId) { where += ' AND a.job_id=?'; params.push(String(req.query.jobId)) }
     if (req.query.status) { where += ' AND a.status=?'; params.push(String(req.query.status)) }
     const rows = db.prepare(`
-      SELECT a.*, f.original_name AS resume_name FROM applications a
+      SELECT a.*, f.original_name AS resume_name, p.photo_key AS applicant_photo_key
+      FROM applications a
       JOIN jobs j ON j.id=a.job_id JOIN stored_files f ON f.id=a.resume_file_id
+      LEFT JOIN job_seeker_profiles p ON p.user_id=a.applicant_user_id
       WHERE ${where} ORDER BY a.skill_match_score DESC, a.applied_at DESC
     `).all(...params)
     res.json({ items: rows.map(applicationDto) })
@@ -732,6 +934,25 @@ export function createApp(config) {
         .run(row.id, row.status, status, req.auth.id, timestamp)
     })()
     res.json({ id: row.id, status })
+  })
+
+  app.get('/api/applications/:applicationId/photo', requireAuth, (req, res, next) => {
+    const row = db.prepare(`
+      SELECT a.applicant_user_id, j.owner_user_id AS job_owner_user_id, p.photo_key
+      FROM applications a
+      JOIN jobs j ON j.id=a.job_id
+      LEFT JOIN job_seeker_profiles p ON p.user_id=a.applicant_user_id
+      WHERE a.id=?
+    `).get(req.params.applicationId)
+
+    if (!row || (row.applicant_user_id !== req.auth.id && row.job_owner_user_id !== req.auth.id)) {
+      return next(new ApiError(404, 'PHOTO_NOT_FOUND', 'Photo not found.'))
+    }
+    if (!row.photo_key) return next(new ApiError(404, 'PHOTO_NOT_FOUND', 'This applicant has no photo.'))
+
+    res.set('X-Content-Type-Options', 'nosniff')
+    res.set('Cache-Control', 'private, max-age=300')
+    res.sendFile(path.join(photoDir, row.photo_key))
   })
 
   app.get('/api/applications/:applicationId/resume', requireAuth, (req, res, next) => {

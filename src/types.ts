@@ -7,6 +7,7 @@ export type Page =
   | 'register'
   | 'forgot'
   | 'reset'
+  | 'admin'
   | 'profile'
   | 'postjob'
   | 'jobdetail'
@@ -201,5 +202,6 @@ export interface ApplicantRecord {
   phone?: string
   coverLetter?: string
   resumeName?: string
+  photo?: string
   applicantSkills?: string[]
 }

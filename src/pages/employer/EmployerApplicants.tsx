@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useApp } from '../../context'
 import { formatRelativeDate } from '../../lib/formatDate'
 import type { ApplicantRecord } from '../../types'
@@ -15,10 +15,15 @@ const STATUS_COLORS: Record<ApplicantRecord['status'], { bg: string; text: strin
 const STATUS_ORDER: ApplicantRecord['status'][] = ['applied', 'reviewing', 'shortlisted', 'interview', 'hired', 'rejected']
 
 export default function EmployerApplicants() {
-  const { employerJobs, allApplicants, updateApplicantStatus, selectedJobId, getApplicantsForJob } = useApp()
+  const { employerJobs, allApplicants, updateApplicantStatus, selectedJobId, getApplicantsForJob, refreshAccountData } = useApp()
   // Pre-filter by the job ID passed from navigate(), if any
   const [jobFilter, setJobFilter] = useState<string>(selectedJobId ?? 'all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+
+  useEffect(() => {
+    const id = window.setInterval(() => { void refreshAccountData() }, 30_000)
+    return () => window.clearInterval(id)
+  }, [refreshAccountData])
   const [selectedApplicant, setSelectedApplicant] = useState<ApplicantRecord | null>(null)
   const [confirmAction, setConfirmAction] = useState<{ id: string; status: ApplicantRecord['status']; label: string } | null>(null)
 
@@ -41,7 +46,7 @@ export default function EmployerApplicants() {
   const newCount = allApplicants.filter(a => a.status === 'applied').length
 
   return (
-    <div style={{ background: '#f9fafb', minHeight: '100vh' }} className="py-8 px-4">
+    <div style={{ background: '#f9fafb', flex: 1 }} className="py-8 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Applicants</h1>
@@ -101,10 +106,14 @@ export default function EmployerApplicants() {
                 <div className="flex items-start gap-4">
                   {/* Avatar */}
                   <div
-                    style={{ background: '#0f2044', color: '#fff', borderRadius: 999, fontSize: 14, flexShrink: 0 }}
+                    style={{ background: '#0f2044', color: '#fff', borderRadius: 999, fontSize: 14, flexShrink: 0, overflow: 'hidden' }}
                     className="w-10 h-10 flex items-center justify-center font-bold"
                   >
-                    {applicant.applicantName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                    {applicant.photo ? (
+                      <img src={applicant.photo} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      applicant.applicantName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                    )}
                   </div>
 
                   {/* Info */}
@@ -198,8 +207,12 @@ export default function EmployerApplicants() {
           <div style={{ background: '#fff', borderRadius: 12, maxWidth: 520, width: '100%', maxHeight: '90vh', overflow: 'auto' }} className="p-6">
             <div className="flex items-start justify-between mb-5">
               <div className="flex items-center gap-3">
-                <div style={{ background: '#0f2044', color: '#fff', borderRadius: 999, fontSize: 16, flexShrink: 0 }} className="w-12 h-12 flex items-center justify-center font-bold">
-                  {selectedApplicant.applicantName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                <div style={{ background: '#0f2044', color: '#fff', borderRadius: 999, fontSize: 16, flexShrink: 0, overflow: 'hidden' }} className="w-12 h-12 flex items-center justify-center font-bold">
+                  {selectedApplicant.photo ? (
+                    <img src={selectedApplicant.photo} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    selectedApplicant.applicantName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                  )}
                 </div>
                 <div>
                   <p className="font-bold text-gray-900">{selectedApplicant.applicantName}</p>
