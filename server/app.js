@@ -248,6 +248,9 @@ function applicationDto(row) {
     matchScorePercent: Math.round(row.skill_match_score * 100),
     matchScore: Math.round(row.skill_match_score * 100),
     resume: { id: row.resume_file_id, name: row.resume_name },
+    photo: row.applicant_photo_key
+      ? `/api/applications/${row.id}/photo?v=${row.applicant_photo_key.slice(0, 8)}`
+      : '',
     resumeName: row.resume_name,
   }
 }
@@ -709,8 +712,10 @@ export function createApp(config) {
 
   app.get('/api/me/applications', requireAuth, requireRole('job-seeker'), (req, res) => {
     const rows = db.prepare(`
-      SELECT a.*, f.original_name AS resume_name FROM applications a
+      SELECT a.*, f.original_name AS resume_name, p.photo_key AS applicant_photo_key
+      FROM applications a
       JOIN stored_files f ON f.id=a.resume_file_id
+      LEFT JOIN job_seeker_profiles p ON p.user_id=a.applicant_user_id
       WHERE a.applicant_user_id=? ORDER BY a.applied_at DESC
     `).all(req.auth.id)
     res.json({ items: rows.map(applicationDto) })
@@ -750,7 +755,7 @@ export function createApp(config) {
           VALUES (?,NULL,'applied',?,?)
         `).run(id, req.auth.id, timestamp)
       })()
-      const row = db.prepare(`SELECT a.*, f.original_name AS resume_name FROM applications a JOIN stored_files f ON f.id=a.resume_file_id WHERE a.id=?`).get(id)
+      const row = db.prepare(`SELECT a.*, f.original_name AS resume_name, p.photo_key AS applicant_photo_key FROM applications a JOIN stored_files f ON f.id=a.resume_file_id LEFT JOIN job_seeker_profiles p ON p.user_id=a.applicant_user_id WHERE a.id=?`).get(id)
       res.status(201).json({ application: applicationDto(row) })
     } catch (error) {
       removeIfPresent(req.file?.path)
@@ -765,8 +770,10 @@ export function createApp(config) {
     if (req.query.jobId) { where += ' AND a.job_id=?'; params.push(String(req.query.jobId)) }
     if (req.query.status) { where += ' AND a.status=?'; params.push(String(req.query.status)) }
     const rows = db.prepare(`
-      SELECT a.*, f.original_name AS resume_name FROM applications a
+      SELECT a.*, f.original_name AS resume_name, p.photo_key AS applicant_photo_key
+      FROM applications a
       JOIN jobs j ON j.id=a.job_id JOIN stored_files f ON f.id=a.resume_file_id
+      LEFT JOIN job_seeker_profiles p ON p.user_id=a.applicant_user_id
       WHERE ${where} ORDER BY a.skill_match_score DESC, a.applied_at DESC
     `).all(...params)
     res.json({ items: rows.map(applicationDto) })
@@ -787,6 +794,25 @@ export function createApp(config) {
         .run(row.id, row.status, status, req.auth.id, timestamp)
     })()
     res.json({ id: row.id, status })
+  })
+
+  app.get('/api/applications/:applicationId/photo', requireAuth, (req, res, next) => {
+    const row = db.prepare(`
+      SELECT a.applicant_user_id, j.owner_user_id AS job_owner_user_id, p.photo_key
+      FROM applications a
+      JOIN jobs j ON j.id=a.job_id
+      LEFT JOIN job_seeker_profiles p ON p.user_id=a.applicant_user_id
+      WHERE a.id=?
+    `).get(req.params.applicationId)
+
+    if (!row || (row.applicant_user_id !== req.auth.id && row.job_owner_user_id !== req.auth.id)) {
+      return next(new ApiError(404, 'PHOTO_NOT_FOUND', 'Photo not found.'))
+    }
+    if (!row.photo_key) return next(new ApiError(404, 'PHOTO_NOT_FOUND', 'This applicant has no photo.'))
+
+    res.set('X-Content-Type-Options', 'nosniff')
+    res.set('Cache-Control', 'private, max-age=300')
+    res.sendFile(path.join(photoDir, row.photo_key))
   })
 
   app.get('/api/applications/:applicationId/resume', requireAuth, (req, res, next) => {

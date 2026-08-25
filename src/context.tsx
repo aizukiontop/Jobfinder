@@ -186,6 +186,7 @@ function toApplicantRecord(dto: any): ApplicantRecord {
     phone: dto.phone ?? '',
     coverLetter: dto.coverLetter ?? '',
     resumeName: dto.resumeName ?? '',
+    photo: dto.photo ?? '',
     applicantSkills: dto.applicantSkills ?? [],
   }
 }

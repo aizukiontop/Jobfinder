@@ -201,5 +201,6 @@ export interface ApplicantRecord {
   phone?: string
   coverLetter?: string
   resumeName?: string
+  photo?: string
   applicantSkills?: string[]
 }

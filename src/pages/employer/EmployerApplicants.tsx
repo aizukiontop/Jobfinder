@@ -101,10 +101,14 @@ export default function EmployerApplicants() {
                 <div className="flex items-start gap-4">
                   {/* Avatar */}
                   <div
-                    style={{ background: '#0f2044', color: '#fff', borderRadius: 999, fontSize: 14, flexShrink: 0 }}
+                    style={{ background: '#0f2044', color: '#fff', borderRadius: 999, fontSize: 14, flexShrink: 0, overflow: 'hidden' }}
                     className="w-10 h-10 flex items-center justify-center font-bold"
                   >
-                    {applicant.applicantName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                    {applicant.photo ? (
+                      <img src={applicant.photo} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      applicant.applicantName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                    )}
                   </div>
 
                   {/* Info */}
@@ -198,8 +202,12 @@ export default function EmployerApplicants() {
           <div style={{ background: '#fff', borderRadius: 12, maxWidth: 520, width: '100%', maxHeight: '90vh', overflow: 'auto' }} className="p-6">
             <div className="flex items-start justify-between mb-5">
               <div className="flex items-center gap-3">
-                <div style={{ background: '#0f2044', color: '#fff', borderRadius: 999, fontSize: 16, flexShrink: 0 }} className="w-12 h-12 flex items-center justify-center font-bold">
-                  {selectedApplicant.applicantName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                <div style={{ background: '#0f2044', color: '#fff', borderRadius: 999, fontSize: 16, flexShrink: 0, overflow: 'hidden' }} className="w-12 h-12 flex items-center justify-center font-bold">
+                  {selectedApplicant.photo ? (
+                    <img src={selectedApplicant.photo} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    selectedApplicant.applicantName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                  )}
                 </div>
                 <div>
                   <p className="font-bold text-gray-900">{selectedApplicant.applicantName}</p>
