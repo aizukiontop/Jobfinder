@@ -126,3 +126,115 @@ export function logOntologyGap(skill: string): void {
     console.warn(`[Ontology] No node found for skill: "${skill}"`)
   }
 }
+
+// ─── Skill Match Breakdown (explainability only) ──────────────────────────────
+// Uses the same ADJ, SYNONYM_INDEX, and bfsDistance already in this module.
+// Does NOT replace or duplicate skillMatchScore() — it re-exposes the
+// intermediate values that produce the existing SkillMatchScore.
+
+export interface SkillMatchDetail {
+  /** The job's required skill label */
+  required: string
+  /** The applicant skill that produced the highest similarity */
+  bestMatch: string | null
+  /** Sim value ∈ [0,1] — identical to what skillMatchScore() accumulates */
+  similarity: number
+  /** BFS edge count between the two resolved nodes */
+  distance: number
+  /** 'exact' = distance 0 | 'ontology' = distance 1+ | 'missing' = no path */
+  matchType: 'exact' | 'ontology' | 'missing'
+  /** Human-readable node labels along the shortest BFS path */
+  ontologyPath: string[]
+}
+
+/**
+ * Per-requirement breakdown of ontology-based skill matching.
+ *
+ * Uses the SAME resolved nodes, BFS graph (ADJ), distances, and similarity
+ * values that skillMatchScore() in skillMatch.ts computes — the only
+ * addition is capturing the path nodes so the UI can display them.
+ *
+ * Invariant:
+ *   average(detail.similarity for detail in explainSkillMatch(req, user))
+ *   === skillMatchScore(req, user)
+ */
+export function explainSkillMatch(
+  requiredSkills: string[],
+  userSkills: string[]
+): SkillMatchDetail[] {
+  const nodeLabel = (id: string): string => {
+    const node = SKILL_NODES.find(n => n.id === id)
+    return node ? node.label : id
+  }
+
+  /** BFS that also records predecessor map so the full path can be reconstructed. */
+  function bfsWithPath(a: string, b: string): { distance: number; path: string[] } {
+    if (a === b) return { distance: 0, path: [a] }
+    if (!ADJ.has(a) || !ADJ.has(b)) return { distance: Infinity, path: [] }
+
+    const prev = new Map<string, string | null>([[a, null]])
+    const queue: string[] = [a]
+
+    while (queue.length > 0) {
+      const cur = queue.shift()!
+      for (const nbr of ADJ.get(cur) ?? []) {
+        if (!prev.has(nbr)) {
+          prev.set(nbr, cur)
+          if (nbr === b) {
+            const path: string[] = []
+            let step: string | null = b
+            while (step !== null) {
+              path.unshift(step)
+              step = prev.get(step) ?? null
+            }
+            return { distance: path.length - 1, path }
+          }
+          queue.push(nbr)
+        }
+      }
+    }
+    return { distance: Infinity, path: [] }
+  }
+
+  return requiredSkills.map(ri => {
+    const riId = resolveSkill(ri)
+
+    let bestSim = 0
+    let bestUj: string | null = null
+    let bestUjId: string | null = null
+
+    for (const uj of userSkills) {
+      const ujId = resolveSkill(uj)
+      if (!riId || !ujId) continue
+      const d = bfsDistance(riId, ujId)
+      const s = isFinite(d) ? 1 / (1 + d) : 0
+      if (s > bestSim) {
+        bestSim = s
+        bestUj = uj
+        bestUjId = ujId
+      }
+    }
+
+    let distance = Infinity
+    let path: string[] = []
+    if (riId && bestUjId) {
+      const result = bfsWithPath(riId, bestUjId)
+      distance = result.distance
+      path = result.path.map(nodeLabel)
+    }
+
+    const matchType: SkillMatchDetail['matchType'] =
+      distance === 0 ? 'exact' :
+      isFinite(distance) ? 'ontology' :
+      'missing'
+
+    return {
+      required: ri,
+      bestMatch: bestUj,
+      similarity: bestSim,
+      distance,
+      matchType,
+      ontologyPath: path,
+    }
+  })
+}

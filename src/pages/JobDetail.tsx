@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../context'
 import { getExternalApplicationUrl } from '../lib/applicationLinks'
+import type { SkillMatchDetail } from '../lib/ontology'
 
 function BookmarkIcon({ filled }: { filled: boolean }) {
   return (
@@ -20,7 +21,7 @@ function BuildingIcon() {
 }
 
 export default function JobDetail() {
-  const { allJobs, selectedJobId, navigate, prevPage, toggleSave, savedJobIds, hasApplied, user, calculateMatchScore, calculateSkillMatchScore } = useApp()
+  const { allJobs, selectedJobId, navigate, prevPage, toggleSave, savedJobIds, hasApplied, user, calculateMatchScore, calculateSkillMatchScore, getSkillBreakdown } = useApp()
   const job = allJobs.find(j => j.id === selectedJobId)
 
   if (!job) {
@@ -239,6 +240,174 @@ export default function JobDetail() {
               </div>
             </Section>
           )}
+
+          {/* Skill Match Breakdown — shown only when logged in */}
+          {user && (
+            <SkillMatchBreakdown
+              breakdown={getSkillBreakdown(job)}
+              skillScore={Math.round(skillScore * 100)}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Skill Match Breakdown (explainability) ────────────────────────────────────
+
+function SkillMatchBreakdown({
+  breakdown,
+  skillScore,
+}: {
+  breakdown: SkillMatchDetail[]
+  skillScore: number
+}) {
+  const [open, setOpen] = useState(false)
+  if (breakdown.length === 0) return null
+
+  const exact    = breakdown.filter(d => d.matchType === 'exact')
+  const ontology = breakdown.filter(d => d.matchType === 'ontology')
+  const missing  = breakdown.filter(d => d.matchType === 'missing')
+
+  return (
+    <div style={{ borderTop: '1px solid #f3f4f6' }} className="pt-5 pb-5">
+      {/* Header — always visible, click to toggle */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-base text-gray-900">Skill Match Breakdown</h2>
+          <div className="flex items-center gap-2">
+            <span style={{
+              background: skillScore >= 70 ? '#dcfce7' : skillScore >= 40 ? '#fef9c3' : '#fee2e2',
+              color: skillScore >= 70 ? '#15803d' : skillScore >= 40 ? '#a16207' : '#b91c1c',
+              borderRadius: 999, fontSize: 12, padding: '2px 10px', fontWeight: 600,
+            }}>
+              {skillScore}% Skill Match
+            </span>
+            <span style={{ color: '#9ca3af', fontSize: 13 }}>{open ? '▲' : '▼'}</span>
+          </div>
+        </div>
+        <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
+          {exact.length} exact · {ontology.length} ontology-related · {missing.length} missing
+          {' '}— click to {open ? 'hide' : 'see'} breakdown
+        </p>
+      </button>
+
+      {/* Detail rows — visible when expanded */}
+      {open && (
+        <div style={{ marginTop: 14 }}>
+          {/* Summary pills */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {exact.length > 0 && (
+              <span style={{ background: '#dcfce7', color: '#15803d', borderRadius: 999, fontSize: 11, padding: '2px 10px', fontWeight: 600 }}>
+                ✓ {exact.length} exact match{exact.length !== 1 ? 'es' : ''}
+              </span>
+            )}
+            {ontology.length > 0 && (
+              <span style={{ background: '#dbeafe', color: '#1d4ed8', borderRadius: 999, fontSize: 11, padding: '2px 10px', fontWeight: 600 }}>
+                ~ {ontology.length} ontology-related
+              </span>
+            )}
+            {missing.length > 0 && (
+              <span style={{ background: '#fee2e2', color: '#b91c1c', borderRadius: 999, fontSize: 11, padding: '2px 10px', fontWeight: 600 }}>
+                ✗ {missing.length} missing
+              </span>
+            )}
+          </div>
+
+          {/* Per-requirement rows */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {breakdown.map((d, i) => (
+              <BreakdownRow key={i} detail={d} />
+            ))}
+          </div>
+
+          {/* Score reconciliation — proves the displayed values sum to SkillMatchScore */}
+          <div style={{
+            marginTop: 14, padding: '10px 12px',
+            background: '#f9fafb', borderRadius: 8,
+            border: '1px solid #e5e7eb', fontSize: 12,
+          }}>
+            <div style={{ fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+              How the Skill Match Score is calculated
+            </div>
+            <div style={{ color: '#6b7280', lineHeight: 1.6 }}>
+              SkillMatchScore = (
+              {breakdown.map((d, i) => (
+                <span key={i}>
+                  {i > 0 ? ' + ' : ''}
+                  <span style={{
+                    color: d.matchType === 'missing' ? '#b91c1c' : d.matchType === 'exact' ? '#15803d' : '#1d4ed8',
+                    fontWeight: 600,
+                  }}>
+                    {d.similarity.toFixed(2)}
+                  </span>
+                </span>
+              ))}
+              ) ÷ {breakdown.length} ={' '}
+              <span style={{ fontWeight: 700, color: '#374151' }}>{skillScore}%</span>
+            </div>
+            <div style={{ color: '#9ca3af', fontSize: 11, marginTop: 6 }}>
+              The ontology graph gives partial credit for related skills — not just exact keyword matches.
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function BreakdownRow({ detail }: { detail: SkillMatchDetail }) {
+  const isExact    = detail.matchType === 'exact'
+  const isOntology = detail.matchType === 'ontology'
+  const isMissing  = detail.matchType === 'missing'
+
+  const iconColor   = isExact ? '#15803d' : isOntology ? '#1d4ed8' : '#9ca3af'
+  const icon        = isExact ? '✓' : isOntology ? '~' : '✗'
+  const bgColor     = isExact ? '#f0fdf4' : isOntology ? '#eff6ff' : '#fafafa'
+  const borderColor = isExact ? '#bbf7d0' : isOntology ? '#bfdbfe' : '#e5e7eb'
+
+  return (
+    <div style={{ background: bgColor, border: `1px solid ${borderColor}`, borderRadius: 8, padding: '10px 12px' }}>
+      <div className="flex items-start justify-between gap-2">
+        <div style={{ flex: 1 }}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span style={{ fontSize: 13, fontWeight: 600, color: iconColor }}>{icon}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{detail.required}</span>
+            {detail.bestMatch && (
+              <>
+                <span style={{ fontSize: 11, color: '#9ca3af' }}>←</span>
+                <span style={{ fontSize: 12, color: '#374151' }}>{detail.bestMatch}</span>
+              </>
+            )}
+          </div>
+          {isExact && (
+            <div style={{ fontSize: 11, color: '#15803d', marginTop: 3 }}>
+              Exact match — your skill matches the requirement directly.
+            </div>
+          )}
+          {isOntology && detail.ontologyPath.length > 1 && (
+            <div style={{ fontSize: 11, color: '#1d4ed8', marginTop: 3 }}>
+              Ontology path ({detail.distance} edge{detail.distance !== 1 ? 's' : ''}):&nbsp;
+              <span style={{ fontWeight: 600 }}>{detail.ontologyPath.join(' → ')}</span>
+            </div>
+          )}
+          {isMissing && (
+            <div style={{ fontSize: 11, color: '#6b7280', marginTop: 3 }}>
+              No matching skill found in your profile.
+            </div>
+          )}
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: isExact ? '#15803d' : isOntology ? '#1d4ed8' : '#9ca3af' }}>
+            {Math.round(detail.similarity * 100)}%
+          </div>
+          <div style={{ fontSize: 10, color: '#9ca3af' }}>
+            {isMissing ? 'no credit' : `sim = 1/(1+${detail.distance})`}
+          </div>
         </div>
       </div>
     </div>

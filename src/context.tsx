@@ -19,6 +19,7 @@ import type {
 
 import * as api from './lib/api'
 import { skillMatchScore } from './lib/skillMatch'
+import { explainSkillMatch, type SkillMatchDetail } from './lib/ontology'
 import { computeMatchScore } from './config/matching'
 import { computeDistanceScore } from './config/geo'
 import { loadRoadGraph, snapToGraph, type RoadGraph } from './lib/roadGraph'
@@ -257,6 +258,13 @@ interface AppState {
 
   /** Ontology-based SkillMatchScore S(a,j), in the range [0,1]. */
   calculateSkillMatchScore: (job: Job) => number
+
+  /**
+   * Per-requirement ontology breakdown — re-exposes the same BFS values that
+   * produce calculateSkillMatchScore(). Used for the explainability UI only.
+   * Does NOT affect SkillMatchScore or MatchScore in any way.
+   */
+  getSkillBreakdown: (job: Job) => SkillMatchDetail[]
 
   /** Composite MatchScore = 0.70*S(a,j) + 0.30*G(a,j). */
   calculateMatchScore: (
@@ -544,6 +552,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return skillMatchScore(required, user.skills)
   }
 
+  const getSkillBreakdown = (job: Job): SkillMatchDetail[] => {
+    if (!user) return []
+    const required = job.requiredSkills?.length ? job.requiredSkills : job.skills ?? []
+    return explainSkillMatch(required, user.skills)
+  }
+
   const calculateMatchScore = async (
     job: Job,
     lat?: number,
@@ -623,6 +637,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dismissActionError: () => setActionError(null),
         reloadJobs,
         calculateSkillMatchScore,
+        getSkillBreakdown,
         calculateMatchScore,
         hasApplied,
         getApplicantCount,
