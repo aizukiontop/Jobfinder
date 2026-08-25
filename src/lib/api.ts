@@ -81,6 +81,32 @@ export interface SessionAccount {
   id: string
   email: string
   role: 'job-seeker' | 'employer'
+  isAdmin?: boolean
+}
+
+export interface AdminUser {
+  id: string
+  email: string
+  role: 'job-seeker' | 'employer'
+  active: boolean
+  name: string
+  detail: string
+  savedJobs: number
+  applications: number
+  jobsPosted: number
+  hasResume: boolean
+  hasPhoto: boolean
+  createdAt: string
+  lastSeen: string | null
+}
+
+export interface AdminUsersResponse {
+  items: AdminUser[]
+  totals: { users: number; seekers: number; employers: number }
+}
+
+export function fetchAdminUsers(signal?: AbortSignal): Promise<AdminUsersResponse> {
+  return request<AdminUsersResponse>('/admin/users', { signal })
 }
 
 export interface SessionResponse {

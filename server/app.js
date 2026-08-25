@@ -201,9 +201,9 @@ function employerProfile(db, user) {
   }
 }
 
-function sessionDto(db, user) {
+function sessionDto(db, user, admin = false) {
   return {
-    account: { id: user.id, email: user.email, role: user.role },
+    account: { id: user.id, email: user.email, role: user.role, isAdmin: admin },
     profile: user.role === 'job-seeker' ? seekerProfile(db, user) : employerProfile(db, user),
   }
 }
@@ -282,6 +282,14 @@ export function createApp(config) {
   const db = openDatabase(config.dbPath)
   initializeDatabase(db, { seed: config.seedOnStart })
   const requireAuth = authenticate(db)
+  const adminEmails = new Set(config.adminEmails ?? [])
+  const isAdmin = (user) => adminEmails.has(String(user?.email ?? '').toLowerCase())
+  const requireAdmin = (req, _res, next) => {
+    if (!isAdmin(req.auth)) {
+      return next(new ApiError(403, 'FORBIDDEN', 'You do not have permission to perform this action.'))
+    }
+    next()
+  }
   const app = express()
   app.disable('x-powered-by')
   app.set('trust proxy', 'loopback')
@@ -358,7 +366,7 @@ export function createApp(config) {
     })()
     const session = createSession(db, id, config.sessionTtlSeconds)
     writeSessionCookie(res, session.token, session.expires, config.secureCookies)
-    res.status(201).json(sessionDto(db, { id, email, role: input.role }))
+    res.status(201).json(sessionDto(db, { id, email, role: input.role }, isAdmin({ email })))
   }))
 
   app.post('/api/auth/login', authLimiter, asyncRoute(async (req, res) => {
@@ -369,7 +377,7 @@ export function createApp(config) {
     const ttl = input.rememberMe ? config.rememberTtlSeconds : config.sessionTtlSeconds
     const session = createSession(db, user.id, ttl)
     writeSessionCookie(res, session.token, session.expires, config.secureCookies)
-    res.json(sessionDto(db, user))
+    res.json(sessionDto(db, user, isAdmin(user)))
   }))
 
 
@@ -426,7 +434,7 @@ export function createApp(config) {
     res.json({ ok: true })
   }))
 
-  app.get('/api/auth/me', requireAuth, (req, res) => res.json(sessionDto(db, req.auth)))
+  app.get('/api/auth/me', requireAuth, (req, res) => res.json(sessionDto(db, req.auth, isAdmin(req.auth))))
   app.post('/api/auth/logout', requireAuth, (req, res) => {
     db.prepare('DELETE FROM sessions WHERE id=?').run(req.auth.sessionId)
     clearSessionCookie(res, config.secureCookies)
@@ -454,7 +462,7 @@ export function createApp(config) {
     res.json({ job: jobDto(db, row) })
   })
 
-  app.get('/api/me/profile', requireAuth, (req, res) => res.json({ profile: sessionDto(db, req.auth).profile }))
+  app.get('/api/me/profile', requireAuth, (req, res) => res.json({ profile: sessionDto(db, req.auth, isAdmin(req.auth)).profile }))
 
   app.patch('/api/me/profile', requireAuth, (req, res, next) => {
     try {
@@ -496,7 +504,7 @@ export function createApp(config) {
         `).run(merged.contactName, merged.companyName, merged.industry, merged.description, merged.address,
           merged.contactEmail, merged.contactPhone, merged.website, merged.companySize, timestamp, req.auth.id)
       }
-      res.json({ profile: sessionDto(db, req.auth).profile })
+      res.json({ profile: sessionDto(db, req.auth, isAdmin(req.auth)).profile })
     } catch (error) { next(error) }
   })
 
@@ -631,6 +639,48 @@ export function createApp(config) {
       removeIfPresent(path.join(photoDir, row.photo_key))
     }
     res.status(204).end()
+  })
+
+  app.get('/api/admin/users', requireAuth, requireAdmin, (req, res) => {
+    const rows = db.prepare(`
+      SELECT
+        u.id, u.email, u.role, u.is_active, u.created_at,
+        s.first_name, s.last_name, s.headline, s.photo_key, s.resume_file_id,
+        e.company_name, e.industry,
+        (SELECT count(*) FROM saved_jobs sj WHERE sj.user_id = u.id) AS saved_jobs,
+        (SELECT count(*) FROM applications a WHERE a.applicant_user_id = u.id) AS applications,
+        (SELECT count(*) FROM jobs j WHERE j.owner_user_id = u.id) AS jobs_posted,
+        (SELECT max(sn.last_seen_at) FROM sessions sn WHERE sn.user_id = u.id) AS last_seen
+      FROM users u
+      LEFT JOIN job_seeker_profiles s ON s.user_id = u.id
+      LEFT JOIN employer_profiles e ON e.user_id = u.id
+      ORDER BY u.created_at DESC
+    `).all()
+
+    res.json({
+      items: rows.map((row) => ({
+        id: row.id,
+        email: row.email,
+        role: row.role,
+        active: row.is_active === 1,
+        name: row.role === 'employer'
+          ? row.company_name
+          : `${row.first_name ?? ''} ${row.last_name ?? ''}`.trim(),
+        detail: row.role === 'employer' ? row.industry : row.headline,
+        savedJobs: row.saved_jobs,
+        applications: row.applications,
+        jobsPosted: row.jobs_posted,
+        hasResume: Boolean(row.resume_file_id),
+        hasPhoto: Boolean(row.photo_key),
+        createdAt: row.created_at,
+        lastSeen: row.last_seen,
+      })),
+      totals: {
+        users: rows.length,
+        seekers: rows.filter((r) => r.role === 'job-seeker').length,
+        employers: rows.filter((r) => r.role === 'employer').length,
+      },
+    })
   })
 
   app.get('/api/me/saved-jobs', requireAuth, requireRole('job-seeker'), (req, res) => {

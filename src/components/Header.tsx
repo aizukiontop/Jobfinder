@@ -4,7 +4,7 @@ import type { Page } from '../types'
 import jobfinderLogo from '../assets/jobfinder-logo.png'
 
 export default function Header() {
-  const { page, navigate, user, employer, setUser, savedJobIds, applications } = useApp()
+  const { page, navigate, user, employer, isAdmin, setUser, savedJobIds, applications } = useApp()
   const [menuOpen, setMenuOpen] = useState(false)
 
   const seekerNavItems: { label: string; page: Page }[] = [
@@ -22,7 +22,10 @@ export default function Header() {
     { label: 'Company Profile', page: 'employer-profile' },
   ]
 
-  const navItems = employer ? employerNavItems : seekerNavItems
+  const baseNavItems = employer ? employerNavItems : seekerNavItems
+  const navItems = isAdmin
+    ? [...baseNavItems, { label: 'Users', page: 'admin' as Page }]
+    : baseNavItems
 
   const handleNavigate = (targetPage: Page) => {
     navigate(targetPage)

@@ -7,6 +7,7 @@ export type Page =
   | 'register'
   | 'forgot'
   | 'reset'
+  | 'admin'
   | 'profile'
   | 'postjob'
   | 'jobdetail'

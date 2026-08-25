@@ -208,6 +208,7 @@ interface AppState {
 
   sessionLoading: boolean
   resetToken: string | null
+  isAdmin: boolean
 
   signIn: (
     email: string,
@@ -284,6 +285,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<User | null>(null)
   const [employer, setEmployerState] = useState<Employer | null>(null)
   const [sessionLoading, setSessionLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   const [savedJobIds, setSavedJobIds] = useState<string[]>([])
   const [applications, setApplications] = useState<Application[]>([])
@@ -357,6 +359,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const adoptSession = useCallback(
     async (session: api.SessionResponse | null, signal?: AbortSignal) => {
+      setIsAdmin(Boolean(session?.account?.isAdmin))
+
       if (!session) {
         setUserState(null)
         setEmployerState(null)
@@ -595,6 +599,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         searchQuery,
         sessionLoading,
         resetToken,
+        isAdmin,
         signIn,
         signUp,
         signOut,
