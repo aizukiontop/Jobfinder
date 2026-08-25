@@ -4,6 +4,7 @@ import { ApiRequestError } from '../lib/api'
 import { deletePhoto, deleteResume, uploadPhoto, uploadResume } from '../lib/api'
 import { formatRelativeDate } from '../lib/formatDate'
 import { CATEGORIES, EMPLOYMENT_TYPES, EXPERIENCE_LEVELS } from '../data'
+import { ANGELES_CITY_BARANGAYS } from '../data/barangays'
 
 export default function Profile() {
   const { user, updateUser, navigate } = useApp()
@@ -18,6 +19,7 @@ export default function Profile() {
     careerCategory: user?.careerCategory ?? '',
     experienceLevel: user?.experienceLevel ?? 'Entry level',
     education: user?.education ?? '',
+    barangay: user?.barangay ?? '',
   })
   const [saved, setSaved] = useState(false)
   const [resumeName, setResumeName] = useState(user?.resumeName ?? '')
@@ -40,6 +42,7 @@ export default function Profile() {
         careerCategory: user.careerCategory,
         experienceLevel: user.experienceLevel,
         education: user.education,
+        barangay: user.barangay ?? '',
       })
       setResumeName(user.resumeName)
       setResumeDate(user.resumeDate)
@@ -62,6 +65,13 @@ export default function Profile() {
     )
   }
 
+  const homeLocationUpdate = () => {
+    if (!form.barangay) return { barangay: null, lat: null, lng: null }
+    const match = ANGELES_CITY_BARANGAYS.find(b => b.canonical === form.barangay)
+    if (!match) return { barangay: null, lat: null, lng: null }
+    return { barangay: match.canonical, lat: match.lat, lng: match.lng }
+  }
+
   const handleSave = async () => {
     const updates = {
       firstName: form.firstName.trim(),
@@ -75,6 +85,7 @@ export default function Profile() {
       education: form.education.trim(),
       resumeName,
       resumeDate,
+      ...homeLocationUpdate(),
     }
     if (!(await updateUser(updates))) return
     setSaved(true)
@@ -275,6 +286,24 @@ export default function Profile() {
                 className="w-full px-3 py-2 text-sm outline-none focus:border-green-500"
                 placeholder="Angeles City"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Home Barangay</label>
+              <select
+                value={form.barangay}
+                onChange={e => setForm(f => ({ ...f, barangay: e.target.value }))}
+                style={{ border: '1px solid #d1d5db', borderRadius: 6 }}
+                className="w-full px-3 py-2 text-sm outline-none focus:border-green-500 bg-white"
+              >
+                <option value="">Not set</option>
+                {ANGELES_CITY_BARANGAYS.map(b => (
+                  <option key={b.canonical} value={b.canonical}>{b.canonical}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Used to measure travel distance to each job.
+              </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Employment Type</label>
