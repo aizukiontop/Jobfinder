@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { useApp } from '../../context'
+import { ApiRequestError, createEmployerJob } from '../../lib/api'
+import { DEFAULT_MAP_CENTER } from '../../config/geo'
 import type { EmployerJob } from '../../types'
 import { CATEGORIES, EMPLOYMENT_TYPES, EXPERIENCE_LEVELS } from '../../data'
 
 const WORK_SETUPS = ['On-site', 'Hybrid', 'Remote']
 
+const SPLIT_PATTERN = /[\n,]/
+
 export default function EmployerPostJob() {
-  const { employer, addEmployerJob, addPostedJob, navigate } = useApp()
+  const { employer, addEmployerJob, reloadJobs, navigate } = useApp()
 
   const [form, setForm] = useState({
     title: '',
@@ -21,9 +25,11 @@ export default function EmployerPostJob() {
     salaryMax: '',
     openings: '1',
     deadline: '',
+    requiredSkills: '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
   const field = (name: keyof typeof form) => ({
     value: form[name],
@@ -39,71 +45,70 @@ export default function EmployerPostJob() {
     if (!form.description.trim()) e.description = 'Description is required.'
     if (!form.requirements.trim()) e.requirements = 'Requirements are required.'
     if (!form.location.trim()) e.location = 'Location is required.'
+    if (!form.requiredSkills.trim()) e.requiredSkills = 'At least one required skill is needed.'
     if (!form.salaryMin || isNaN(Number(form.salaryMin))) e.salaryMin = 'Enter a valid minimum salary.'
     if (!form.salaryMax || isNaN(Number(form.salaryMax))) e.salaryMax = 'Enter a valid maximum salary.'
     if (!form.openings || isNaN(Number(form.openings)) || Number(form.openings) < 1) e.openings = 'Enter a valid number of openings.'
     return e
   }
 
-  const handleSubmit = (isDraft: boolean) => {
+  const handleSubmit = async (isDraft: boolean) => {
     if (!isDraft) {
       const errs = validate()
       if (Object.keys(errs).length > 0) { setErrors(errs); return }
     }
 
-    const now = new Date()
     const salaryMin = Number(form.salaryMin) || 0
     const salaryMax = Number(form.salaryMax) || 0
+    const toList = (value: string) =>
+      value.split(SPLIT_PATTERN).map(item => item.trim()).filter(Boolean)
 
-    const empJob: EmployerJob = {
-      id: `ej-${Date.now()}`,
-      employerId: employer?.id ?? '',
-      title: form.title,
-      company: employer?.companyName ?? '',
-      category: form.category,
-      description: form.description,
-      requirements: form.requirements,
-      employmentType: form.employmentType,
-      workArrangement: form.workArrangement,
-      experienceLevel: form.experienceLevel,
-      location: form.location,
-      city: form.location.split(',')[0]?.trim() ?? form.location,
-      salary: salaryMin && salaryMax ? `₱${salaryMin.toLocaleString()} - ₱${salaryMax.toLocaleString()}` : 'Negotiable',
-      salaryMin,
-      salaryMax,
-      openings: Number(form.openings) || 1,
-      deadline: form.deadline,
-      status: isDraft ? 'draft' : 'active',
-      postedDate: now.toISOString().split('T')[0],
-      daysAgo: 0,
-      applicantCount: 0,
-      requiredSkills: [],
-      preferredSkills: [],
-      skills: [],
-    }
-
-    addEmployerJob(empJob)
-
-    if (!isDraft) {
-      addPostedJob({
-        id: empJob.id, title: empJob.title, company: empJob.company,
-        location: empJob.location, city: 'Angeles City', province: 'Pampanga',
-        barangay: empJob.barangay ?? null, address: empJob.location,
-        salary: empJob.salary, salaryMin, salaryMax,
-        employmentType: empJob.employmentType, workArrangement: empJob.workArrangement,
-        experienceLevel: empJob.experienceLevel, category: empJob.category,
-        description: empJob.description, responsibilities: [],
-        requirements: empJob.requirements.split('\n').filter(Boolean),
-        benefits: [], requiredSkills: empJob.requiredSkills ?? [],
-        preferredSkills: empJob.preferredSkills ?? [], skills: empJob.skills ?? [],
-        openings: empJob.openings, daysAgo: 0,
-        lat: empJob.lat ?? 15.1449, lng: empJob.lng ?? 120.5887,
-        coordinateSource: 'city-centroid', dataSource: 'employer-created',
-        postedBy: employer?.id,
+    setSubmitting(true)
+    try {
+      const job = await createEmployerJob({
+        title: form.title,
+        category: form.category,
+        description: form.description,
+        requirements: toList(form.requirements),
+        requiredSkills: toList(form.requiredSkills),
+        employmentType: form.employmentType,
+        workArrangement: form.workArrangement,
+        experienceLevel: form.experienceLevel,
+        location: form.location,
+        city: 'Angeles City',
+        province: 'Pampanga',
+        address: form.location,
+        salary: salaryMin && salaryMax
+          ? `₱${salaryMin.toLocaleString()} - ₱${salaryMax.toLocaleString()}`
+          : 'Negotiable',
+        salaryMin: salaryMin || null,
+        salaryMax: salaryMax || null,
+        openings: Number(form.openings) || 1,
+        applicationDeadline: form.deadline || null,
+        lat: DEFAULT_MAP_CENTER[0],
+        lng: DEFAULT_MAP_CENTER[1],
+        coordinateSource: 'city-centroid',
+        status: isDraft ? 'draft' : 'active',
       })
-    }
 
-    setSubmitted(true)
+      addEmployerJob({
+        ...(job as unknown as EmployerJob),
+        employerId: employer?.id ?? '',
+        requirements: form.requirements,
+        deadline: form.deadline,
+        applicantCount: 0,
+      })
+      if (!isDraft) await reloadJobs()
+      setSubmitted(true)
+    } catch (err) {
+      setErrors(
+        err instanceof ApiRequestError && Object.keys(err.fields).length > 0
+          ? err.fields
+          : { title: err instanceof ApiRequestError ? err.message : 'Unable to reach the JobFinder server.' }
+      )
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const inputStyle = (err?: string) => ({
@@ -125,7 +130,7 @@ export default function EmployerPostJob() {
           <h2 className="text-lg font-bold text-gray-900 mb-2">Job Posted Successfully!</h2>
           <p className="text-sm text-gray-500 mb-6">Your job listing is now live and visible to job seekers.</p>
           <div className="flex gap-3">
-            <button onClick={() => { setSubmitted(false); setForm({ title: '', category: CATEGORIES[0]?.name ?? '', description: '', requirements: '', employmentType: 'Full-time', workArrangement: 'On-site', experienceLevel: 'Entry level', location: '', salaryMin: '', salaryMax: '', openings: '1', deadline: '' }) }} style={{ border: '1px solid #e5e7eb', borderRadius: 6 }} className="flex-1 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <button onClick={() => { setSubmitted(false); setForm({ title: '', category: CATEGORIES[0]?.name ?? '', description: '', requirements: '', employmentType: 'Full-time', workArrangement: 'On-site', experienceLevel: 'Entry level', location: '', salaryMin: '', salaryMax: '', openings: '1', deadline: '', requiredSkills: '' }) }} style={{ border: '1px solid #e5e7eb', borderRadius: 6 }} className="flex-1 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
               Post Another
             </button>
             <button onClick={() => navigate('employer-jobs')} style={{ background: '#0f2044', color: '#fff', borderRadius: 6 }} className="flex-1 py-2.5 text-sm font-semibold hover:opacity-90">
@@ -202,6 +207,18 @@ export default function EmployerPostJob() {
             {errors.requirements && <p className="text-xs text-red-500 mt-1">{errors.requirements}</p>}
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Required Skills <span className="text-red-500">*</span></label>
+            <textarea
+              {...field('requiredSkills')}
+              rows={2}
+              style={inputStyle(errors.requiredSkills)}
+              className={baseInput + ' resize-none'}
+              placeholder="Separate skills with commas, for example: Customer Service, MS Excel, Cash Handling"
+            />
+            {errors.requiredSkills && <p className="text-xs text-red-500 mt-1">{errors.requiredSkills}</p>}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Employment Type */}
             <div>
@@ -255,17 +272,19 @@ export default function EmployerPostJob() {
           <div style={{ borderTop: '1px solid #f3f4f6' }} className="pt-5 flex gap-3">
             <button
               onClick={() => handleSubmit(true)}
+              disabled={submitting}
               style={{ border: '1px solid #d1d5db', borderRadius: 6 }}
-              className="flex-1 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="flex-1 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
             >
-              Save Draft
+              {submitting ? 'Saving…' : 'Save Draft'}
             </button>
             <button
               onClick={() => handleSubmit(false)}
+              disabled={submitting}
               style={{ background: '#0f2044', color: '#fff', borderRadius: 6 }}
-              className="flex-1 py-2.5 text-sm font-semibold hover:opacity-90"
+              className="flex-1 py-2.5 text-sm font-semibold hover:opacity-90 disabled:opacity-60"
             >
-              Post Job
+              {submitting ? 'Posting…' : 'Post Job'}
             </button>
           </div>
         </div>

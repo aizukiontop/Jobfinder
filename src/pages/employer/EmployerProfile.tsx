@@ -48,13 +48,6 @@ export default function EmployerProfile() {
     setEditing(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
-
-    // Also update in localStorage employer accounts
-    try {
-      const employers = JSON.parse(localStorage.getItem('jf_employers') ?? '[]')
-      const updated = employers.map((e: any) => e.id === employer?.id ? { ...e, ...form } : e)
-      localStorage.setItem('jf_employers', JSON.stringify(updated))
-    } catch { /* ignore */ }
   }
 
   const handleCancel = () => {

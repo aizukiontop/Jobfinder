@@ -18,3 +18,11 @@ server/.env
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+
+# AI assistant working files — never publish these to GitHub
+.claude/
+.claude-replay.*
+.codex/
+.codex-tmp/
+.aider*
+.cursor/

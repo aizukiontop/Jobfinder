@@ -8,6 +8,8 @@ import { createApp } from '../app.js'
 import { loadConfig } from '../config.js'
 import { hashPassword } from '../security.js'
 
+const VERIFIED_JOB_COUNT = JSON.parse(readFileSync(new URL('../../src/data/jobs.verified.json', import.meta.url), 'utf8')).length
+
 const mutationOrigin = 'http://127.0.0.1'
 let root
 let api
@@ -91,11 +93,11 @@ test('health and verified seed are correct and idempotent', async () => {
 
   const jobs = await request('/api/jobs')
   const payload = await json(jobs)
-  assert.equal(payload.total, 31)
-  assert.equal(payload.items.length, 31)
+  assert.equal(payload.total, VERIFIED_JOB_COUNT)
+  assert.equal(payload.items.length, VERIFIED_JOB_COUNT)
   assert.ok(payload.items.every((job) => job.dataSource === 'external-verified'))
   assert.ok(payload.items.every((job) => job.applicationMode === 'external'))
-  assert.equal(api.db.prepare("SELECT count(*) AS count FROM jobs WHERE data_source='external-verified'").get().count, 31)
+  assert.equal(api.db.prepare("SELECT count(*) AS count FROM jobs WHERE data_source='external-verified'").get().count, VERIFIED_JOB_COUNT)
 })
 
 test('runtime and service configuration enforce loopback-only networking', () => {

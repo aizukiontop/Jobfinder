@@ -333,18 +333,18 @@ export default function Home() {
                   }}
                 >
                   <h3 className="font-bold text-white text-base mb-2">
-                    Browse verified listings
+                    Get discovered
                   </h3>
 
                   <p
                     className="text-xs mb-4"
                     style={{ color: 'rgba(255,255,255,0.7)' }}
                   >
-                    Review current opportunities and apply through each verified source.
+                    Create a profile and let employers find you first.
                   </p>
 
                   <button
-                    onClick={() => navigate('search')}
+                    onClick={() => navigate('profile')}
                     style={{
                       background: '#16a34a',
                       color: '#fff',
@@ -352,7 +352,7 @@ export default function Home() {
                     }}
                     className="w-full py-2 text-sm font-semibold hover:bg-green-700 transition-colors"
                   >
-                    Search Jobs
+                    Create Profile
                   </button>
                 </div>
               </div>
@@ -360,33 +360,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer
-        style={{
-          background: '#fff',
-          borderTop: '1px solid #e5e7eb',
-        }}
-        className="py-6 px-4"
-      >
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
-          <p className="text-xs text-gray-400">
-            © 2026 JobFinder. All rights reserved.
-          </p>
-
-          <div className="flex gap-4">
-            {['Terms', 'Privacy', 'Accessibility', 'Contact'].map(l => (
-              <button
-                key={l}
-                style={{ color: '#16a34a' }}
-                className="text-xs hover:underline"
-              >
-                {l}
-              </button>
-            ))}
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }

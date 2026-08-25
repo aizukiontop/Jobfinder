@@ -16,15 +16,60 @@ import type {
   Page,
   User,
 } from './types'
-import { computeDistanceScore } from './config/geo'
-import { computeMatchScore } from './config/matching'
-import { fetchPublicJobs } from './lib/api'
-import { dijkstra } from './lib/dijkstra'
-import { loadRoadGraph, snapToGraph, type RoadGraph } from './lib/roadGraph'
-import { skillMatchScore } from './lib/skillMatch'
 
-// The public release deliberately exposes only the read-only job catalogue.
-const PUBLIC_PAGES = new Set<Page>(['home', 'search', 'jobdetail'])
+import * as api from './lib/api'
+import { skillMatchScore } from './lib/skillMatch'
+import { computeMatchScore } from './config/matching'
+import { computeDistanceScore } from './config/geo'
+import { loadRoadGraph, snapToGraph, type RoadGraph } from './lib/roadGraph'
+import { dijkstra } from './lib/dijkstra'
+
+// ── Road graph singleton — lazy-loaded once and cached for the session ─────────
+// All Dijkstra scoring calls share this reference so the 1.96 MB JSON is only
+// fetched once. The promise is stored so concurrent callers await the same load.
+let _roadGraphPromise: Promise<RoadGraph> | null = null
+
+function getRoadGraph(): Promise<RoadGraph> {
+  if (!_roadGraphPromise) {
+    _roadGraphPromise = loadRoadGraph()
+  }
+  return _roadGraphPromise
+}
+
+/**
+ * Compute the Dijkstra-based DistanceScore G(a,j) for a user→job pair.
+ *
+ * Thesis §Method (p.25):
+ *   DistanceScore = 1 / (1 + NormalizedDistance)
+ *   NormalizedDistance = shortestPathKm / MAX_REFERENCE_DISTANCE_KM
+ *
+ * Returns 0 if:
+ *   • coordinates are missing
+ *   • either point snaps too far from the road network
+ *   • Dijkstra finds no path (disconnected subgraph)
+ */
+async function computeDijkstraDistanceScore(
+  userLat: number,
+  userLng: number,
+  jobLat: number,
+  jobLng: number
+): Promise<number> {
+  try {
+    const graph = await getRoadGraph()
+    const snapUser = snapToGraph(userLat, userLng, graph)
+    const snapJob  = snapToGraph(jobLat,  jobLng,  graph)
+    if (!snapUser || !snapJob) return 0
+
+    const result = dijkstra(graph, snapUser.nodeId, snapJob.nodeId)
+    if (!result.found) return 0
+
+    // Total road distance = Dijkstra path + snap offsets
+    const totalKm = result.distanceKm + snapUser.snapDistKm + snapJob.snapDistKm
+    return computeDistanceScore(totalKm)
+  } catch {
+    return 0
+  }
+}
 
 const LEGACY_STORAGE_KEYS = [
   'jf_accounts',
@@ -39,58 +84,109 @@ const LEGACY_STORAGE_KEYS = [
   'jf_data_version',
 ] as const
 
-const STORAGE_CLEANUP_MARKER = 'jobfinder_public_storage_cleanup_v1'
+const STORAGE_CLEANUP_MARKER = 'jobfinder_server_backed_cleanup_v1'
 
 function clearLegacyBrowserDataOnce() {
   if (typeof window === 'undefined') return
-
   try {
     if (window.localStorage.getItem(STORAGE_CLEANUP_MARKER)) return
-
-    for (const key of LEGACY_STORAGE_KEYS) {
-      window.localStorage.removeItem(key)
-    }
+    for (const key of LEGACY_STORAGE_KEYS) window.localStorage.removeItem(key)
     window.localStorage.setItem(STORAGE_CLEANUP_MARKER, 'complete')
   } catch {
-    // Storage can be unavailable in private browsing or a restricted iframe.
-    // The public app does not depend on it, so browsing can safely continue.
   }
 }
 
-// Road graph singleton: lazy-loaded once and shared by all Dijkstra calls.
-let roadGraphPromise: Promise<RoadGraph> | null = null
-
-function getRoadGraph(): Promise<RoadGraph> {
-  if (!roadGraphPromise) {
-    roadGraphPromise = loadRoadGraph()
+function toUser(profile: any): User {
+  return {
+    id: profile.id,
+    email: profile.email,
+    password: '',
+    firstName: profile.firstName ?? '',
+    lastName: profile.lastName ?? '',
+    headline: profile.headline ?? '',
+    photo: profile.photo ?? '',
+    skills: profile.skills ?? [],
+    preferredLocation: profile.preferredLocation ?? '',
+    preferredEmploymentType: profile.preferredEmploymentType ?? '',
+    careerCategory: profile.careerCategory ?? '',
+    education: profile.education ?? '',
+    experienceLevel: profile.experienceLevel ?? '',
+    resumeName: profile.resumeName ?? '',
+    resumeDate: profile.resumeDate ?? '',
+    role: 'job-seeker',
+    barangay: profile.barangay ?? null,
+    lat: profile.lat ?? null,
+    lng: profile.lng ?? null,
   }
-  return roadGraphPromise
 }
 
-/**
- * Compute the Dijkstra-based DistanceScore G(a,j) for a user-to-job pair.
- * Returns zero when coordinates are unavailable, graph snapping fails, or the
- * graph contains no route between the two snapped nodes.
- */
-async function computeDijkstraDistanceScore(
-  userLat: number,
-  userLng: number,
-  jobLat: number,
-  jobLng: number
-): Promise<number> {
-  try {
-    const graph = await getRoadGraph()
-    const snapUser = snapToGraph(userLat, userLng, graph)
-    const snapJob = snapToGraph(jobLat, jobLng, graph)
-    if (!snapUser || !snapJob) return 0
+function toEmployer(profile: any): Employer {
+  return {
+    id: profile.id,
+    email: profile.email,
+    password: '',
+    contactName: profile.contactName ?? '',
+    companyName: profile.companyName ?? '',
+    industry: profile.industry ?? '',
+    description: profile.description ?? '',
+    address: profile.address ?? '',
+    contactEmail: profile.contactEmail ?? profile.email,
+    contactPhone: profile.contactPhone ?? '',
+    website: profile.website ?? '',
+    companySize: profile.companySize ?? '',
+  }
+}
 
-    const result = dijkstra(graph, snapUser.nodeId, snapJob.nodeId)
-    if (!result.found) return 0
+function toEmployerJob(dto: any): EmployerJob {
+  return {
+    id: dto.id,
+    employerId: dto.postedBy ?? '',
+    title: dto.title ?? '',
+    company: dto.company ?? '',
+    category: dto.category ?? '',
+    description: dto.description ?? '',
+    requirements: Array.isArray(dto.requirements)
+      ? dto.requirements.join('\n')
+      : dto.requirements ?? '',
+    employmentType: dto.employmentType ?? '',
+    workArrangement: dto.workArrangement ?? '',
+    location: dto.location ?? '',
+    city: dto.city ?? '',
+    barangay: dto.barangay ?? null,
+    address: dto.address ?? '',
+    salary: dto.salary ?? '',
+    salaryMin: dto.salaryMin ?? 0,
+    salaryMax: dto.salaryMax ?? 0,
+    openings: dto.openings ?? 1,
+    deadline: dto.expirationDate ?? '',
+    status: dto.status ?? 'draft',
+    postedDate: dto.datePosted ?? '',
+    daysAgo: dto.daysAgo ?? 0,
+    applicantCount: dto.applicantCount ?? 0,
+    requiredSkills: dto.requiredSkills ?? [],
+    preferredSkills: dto.preferredSkills ?? [],
+    skills: dto.skills ?? dto.requiredSkills ?? [],
+    experienceLevel: dto.experienceLevel ?? '',
+    lat: dto.lat ?? undefined,
+    lng: dto.lng ?? undefined,
+    coordinateSource: dto.coordinateSource ?? undefined,
+  }
+}
 
-    const totalKm = result.distanceKm + snapUser.snapDistKm + snapJob.snapDistKm
-    return computeDistanceScore(totalKm)
-  } catch {
-    return 0
+function toApplicantRecord(dto: any): ApplicantRecord {
+  return {
+    id: dto.id,
+    jobId: dto.jobId,
+    jobTitle: dto.jobTitle ?? '',
+    applicantName: dto.applicantName ?? `${dto.firstName ?? ''} ${dto.lastName ?? ''}`.trim(),
+    applicantEmail: dto.applicantEmail ?? dto.email ?? '',
+    appliedDate: dto.dateApplied ?? '',
+    matchScore: dto.matchScorePercent ?? dto.matchScore ?? 0,
+    status: dto.status ?? 'applied',
+    phone: dto.phone ?? '',
+    coverLetter: dto.coverLetter ?? '',
+    resumeName: dto.resumeName ?? '',
+    applicantSkills: dto.applicantSkills ?? [],
   }
 }
 
@@ -98,27 +194,40 @@ interface AppState {
   page: Page
   selectedJobId: string | null
   prevPage: Page | null
+
   user: User | null
   employer: Employer | null
   searchQuery: string
 
-  // Inert compatibility values for legacy components that are deliberately
-  // excluded from the public route graph. They never read or write storage.
   savedJobIds: string[]
   applications: Application[]
   postedJobs: Job[]
   employerJobs: EmployerJob[]
   allApplicants: ApplicantRecord[]
+
+  sessionLoading: boolean
+
+  signIn: (
+    email: string,
+    password: string,
+    rememberMe?: boolean
+  ) => Promise<'job-seeker' | 'employer'>
+  signUp: (
+    input: api.SeekerRegistration | api.EmployerRegistration
+  ) => Promise<'job-seeker' | 'employer'>
+  signOut: () => Promise<void>
+
   setUser: (user: User | null) => void
   setEmployer: (employer: Employer | null) => void
-  toggleSave: (jobId: string) => void
+  toggleSave: (jobId: string) => Promise<void>
+  submitApplication: (jobId: string, input: api.ApplicationInput) => Promise<Application>
   addApplication: (application: Application) => void
   addPostedJob: (job: Job) => void
   addEmployerJob: (job: EmployerJob) => void
-  updateEmployerJob: (id: string, updates: Partial<EmployerJob>) => void
-  updateApplicantStatus: (id: string, status: ApplicantRecord['status']) => void
-  updateEmployer: (updates: Partial<Employer>) => void
-  updateUser: (updates: Partial<User>) => void
+  updateEmployerJob: (id: string, updates: Partial<EmployerJob>) => Promise<void>
+  updateApplicantStatus: (id: string, status: ApplicantRecord['status']) => Promise<void>
+  updateEmployer: (updates: Partial<Employer>) => Promise<void>
+  updateUser: (updates: Partial<User>) => Promise<void>
   hasApplied: (jobId: string) => boolean
   getApplicantCount: (jobId: string) => number
   getApplicantsForJob: (jobId: string) => ApplicantRecord[]
@@ -162,38 +271,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [prevPage, setPrevPage] = useState<Page | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Public mode has no browser-side identity. This preserves the matching API
-  // without reintroducing plaintext localStorage credentials or fake sessions.
-  const [user] = useState<User | null>(null)
+  const [user, setUserState] = useState<User | null>(null)
+  const [employer, setEmployerState] = useState<Employer | null>(null)
+  const [sessionLoading, setSessionLoading] = useState(true)
 
-  const employer: Employer | null = null
-  const savedJobIds: string[] = []
-  const applications: Application[] = []
+  const [savedJobIds, setSavedJobIds] = useState<string[]>([])
+  const [applications, setApplications] = useState<Application[]>([])
+  const [employerJobs, setEmployerJobs] = useState<EmployerJob[]>([])
+  const [allApplicants, setAllApplicants] = useState<ApplicantRecord[]>([])
+
   const postedJobs: Job[] = []
-  const employerJobs: EmployerJob[] = []
-  const allApplicants: ApplicantRecord[] = []
-
-  // These no-op actions exist only so legacy, unreferenced modules continue to
-  // type-check. Public navigation cannot render those modules.
-  const setUser = (_user: User | null) => undefined
-  const setEmployer = (_employer: Employer | null) => undefined
-  const toggleSave = (_jobId: string) => undefined
-  const addApplication = (_application: Application) => undefined
-  const addPostedJob = (_job: Job) => undefined
-  const addEmployerJob = (_job: EmployerJob) => undefined
-  const updateEmployerJob = (
-    _id: string,
-    _updates: Partial<EmployerJob>
-  ) => undefined
-  const updateApplicantStatus = (
-    _id: string,
-    _status: ApplicantRecord['status']
-  ) => undefined
-  const updateEmployer = (_updates: Partial<Employer>) => undefined
-  const updateUser = (_updates: Partial<User>) => undefined
-  const hasApplied = (_jobId: string) => false
-  const getApplicantCount = (_jobId: string) => 0
-  const getApplicantsForJob = (_jobId: string): ApplicantRecord[] => []
 
   const [allJobs, setAllJobs] = useState<Job[]>([])
   const [jobsLoading, setJobsLoading] = useState(true)
@@ -207,13 +294,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const loadJobs = useCallback(async (signal?: AbortSignal) => {
     setJobsLoading(true)
     setJobsError(null)
-
     try {
-      const jobs = await fetchPublicJobs(signal)
-      setAllJobs(jobs)
+      setAllJobs(await api.fetchPublicJobs(signal))
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
-
       setAllJobs([])
       setJobsError(
         error instanceof Error
@@ -225,15 +309,169 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const reloadJobs = useCallback(() => loadJobs(), [loadJobs])
+
   useEffect(() => {
     clearLegacyBrowserDataOnce()
-
     const controller = new AbortController()
     void loadJobs(controller.signal)
     return () => controller.abort()
   }, [loadJobs])
 
-  const reloadJobs = useCallback(() => loadJobs(), [loadJobs])
+  const loadSeekerData = useCallback(async (signal?: AbortSignal) => {
+    const [ids, apps] = await Promise.all([
+      api.fetchSavedJobIds(signal),
+      api.fetchMyApplications(signal),
+    ])
+    setSavedJobIds(ids)
+    setApplications(apps)
+  }, [])
+
+  const loadEmployerData = useCallback(async (signal?: AbortSignal) => {
+    const [jobs, applicants] = await Promise.all([
+      api.fetchEmployerJobs(signal),
+      api.fetchEmployerApplications({}, signal),
+    ])
+    setEmployerJobs(jobs.map(toEmployerJob))
+    setAllApplicants(applicants.map(toApplicantRecord))
+  }, [])
+
+  const adoptSession = useCallback(
+    async (session: api.SessionResponse | null, signal?: AbortSignal) => {
+      if (!session) {
+        setUserState(null)
+        setEmployerState(null)
+        setSavedJobIds([])
+        setApplications([])
+        setEmployerJobs([])
+        setAllApplicants([])
+        return
+      }
+
+      if (session.account.role === 'job-seeker') {
+        setUserState(toUser(session.profile))
+        setEmployerState(null)
+        await loadSeekerData(signal)
+      } else {
+        setEmployerState(toEmployer(session.profile))
+        setUserState(null)
+        await loadEmployerData(signal)
+      }
+    },
+    [loadSeekerData, loadEmployerData]
+  )
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void (async () => {
+      try {
+        await adoptSession(await api.fetchSession(controller.signal), controller.signal)
+      } catch {
+      } finally {
+        if (!controller.signal.aborted) setSessionLoading(false)
+      }
+    })()
+    return () => controller.abort()
+  }, [adoptSession])
+
+  const signIn = useCallback(
+    async (email: string, password: string, rememberMe = false) => {
+      const session = await api.login(email, password, rememberMe)
+      await adoptSession(session)
+      return session.account.role
+    },
+    [adoptSession]
+  )
+
+  const signUp = useCallback(
+    async (input: api.SeekerRegistration | api.EmployerRegistration) => {
+      const session = await api.register(input)
+      await adoptSession(session)
+      return session.account.role
+    },
+    [adoptSession]
+  )
+
+  const signOut = useCallback(async () => {
+    try {
+      await api.logout()
+    } finally {
+      await adoptSession(null)
+    }
+  }, [adoptSession])
+
+  const setUser = (next: User | null) => {
+    if (next === null) void signOut()
+    else setUserState(next)
+  }
+
+  const setEmployer = (next: Employer | null) => {
+    if (next === null) void signOut()
+    else setEmployerState(next)
+  }
+
+  const toggleSave = async (jobId: string) => {
+    if (!user) {
+      navigate('signin')
+      return
+    }
+
+    if (savedJobIds.includes(jobId)) {
+      await api.unsaveJob(jobId)
+      setSavedJobIds(prev => prev.filter(id => id !== jobId))
+    } else {
+      await api.saveJob(jobId)
+      setSavedJobIds(prev => [jobId, ...prev])
+    }
+  }
+
+  const submitApplication = async (
+    jobId: string,
+    input: api.ApplicationInput
+  ): Promise<Application> => {
+    const application = await api.applyToJob(jobId, input)
+    setApplications(prev => [application, ...prev])
+    return application
+  }
+
+  const addApplication = (application: Application) => {
+    setApplications(prev =>
+      prev.some(a => a.id === application.id) ? prev : [application, ...prev]
+    )
+  }
+
+  const addPostedJob = (_job: Job) => {
+    void reloadJobs()
+  }
+
+  const addEmployerJob = (job: EmployerJob) => {
+    setEmployerJobs(prev => [job, ...prev])
+  }
+
+  const updateEmployerJob = async (id: string, updates: Partial<EmployerJob>) => {
+    const job = await api.updateEmployerJob(id, updates as Record<string, unknown>)
+    setEmployerJobs(prev =>
+      prev.map(j =>
+        j.id === id ? { ...toEmployerJob(job), applicantCount: j.applicantCount } : j
+      )
+    )
+    if (updates.status) await reloadJobs()
+  }
+
+  const updateApplicantStatus = async (id: string, status: ApplicantRecord['status']) => {
+    await api.updateApplicationStatus(id, status)
+    setAllApplicants(prev => prev.map(a => (a.id === id ? { ...a, status } : a)))
+  }
+
+  const updateUser = async (updates: Partial<User>) => {
+    const profile = await api.updateProfile(updates)
+    setUserState(toUser(profile))
+  }
+
+  const updateEmployer = async (updates: Partial<Employer>) => {
+    const profile = await api.updateProfile(updates)
+    setEmployerState(toEmployer(profile))
+  }
 
   const setUserLocation = (
     lat: number,
@@ -254,52 +492,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLocMode('gps')
   }
 
-  const navigate = (newPage: Page, jobId?: string | null) => {
-    const publicPage = PUBLIC_PAGES.has(newPage) ? newPage : 'home'
+  function navigate(newPage: Page, jobId?: string | null) {
     setPrevPage(page)
-    setPage(publicPage)
-    if (publicPage === 'jobdetail' && jobId !== undefined) {
-      setSelectedJobId(jobId ?? null)
-    }
+    setPage(newPage)
+    if (jobId !== undefined) setSelectedJobId(jobId ?? null)
     window.scrollTo(0, 0)
   }
 
-  // Matching remains implemented for future server-backed profiles and for the
-  // thesis algorithm. Public visitors currently have no persisted skill set.
   const calculateSkillMatchScore = (job: Job): number => {
     if (!user) return 0
-    const required = job.requiredSkills?.length
-      ? job.requiredSkills
-      : job.skills ?? []
+    const required = job.requiredSkills?.length ? job.requiredSkills : job.skills ?? []
     return skillMatchScore(required, user.skills)
   }
 
   const calculateMatchScore = async (
     job: Job,
-    latitude?: number,
-    longitude?: number
+    lat?: number,
+    lng?: number
   ): Promise<number> => {
     if (!user) return 0
 
-    const skillScore = calculateSkillMatchScore(job)
-    let distanceScore = 0
+    // S(a,j) — ontology-based skill match (synchronous)
+    const S = calculateSkillMatchScore(job)
 
-    if (
-      latitude != null &&
-      longitude != null &&
-      job.lat != null &&
-      job.lng != null
-    ) {
-      distanceScore = await computeDijkstraDistanceScore(
-        latitude,
-        longitude,
-        job.lat,
-        job.lng
-      )
+    // G(a,j) — Dijkstra shortest-path geographic accessibility (async)
+    // Thesis §Method (p.25): DistanceScore = 1/(1 + shortestPathKm/14.9434)
+    let G = 0
+    if (lat != null && lng != null && job.lat && job.lng) {
+      G = await computeDijkstraDistanceScore(lat, lng, job.lat, job.lng)
     }
 
-    return computeMatchScore(skillScore, distanceScore)
+    // MatchScore = α×S + β×G  (α=0.70, β=0.30)
+    return computeMatchScore(S, G)
   }
+
+  const hasApplied = (jobId: string) => applications.some(app => app.jobId === jobId)
+
+  const getApplicantCount = (jobId: string) => {
+    const job = employerJobs.find(j => j.id === jobId)
+    if (job) return job.applicantCount
+    return allApplicants.filter(a => a.jobId === jobId).length
+  }
+
+  const getApplicantsForJob = (jobId: string): ApplicantRecord[] =>
+    allApplicants
+      .filter(a => a.jobId === jobId)
+      .sort((a, b) => b.matchScore - a.matchScore)
 
   return (
     <AppContext.Provider
@@ -309,25 +547,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         prevPage,
         user,
         employer,
-        searchQuery,
         savedJobIds,
         applications,
         postedJobs,
         employerJobs,
         allApplicants,
-        setUser,
-        setEmployer,
-        toggleSave,
-        addApplication,
-        addPostedJob,
-        addEmployerJob,
-        updateEmployerJob,
-        updateApplicantStatus,
-        updateEmployer,
-        updateUser,
-        hasApplied,
-        getApplicantCount,
-        getApplicantsForJob,
+        searchQuery,
+        sessionLoading,
+        signIn,
+        signUp,
+        signOut,
         userLat,
         userLng,
         userInsideCity,
@@ -335,6 +564,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setUserLocation,
         clearUserLocation,
         navigate,
+        setUser,
+        setEmployer,
+        toggleSave,
+        submitApplication,
+        addApplication,
+        addPostedJob,
+        addEmployerJob,
+        updateEmployerJob,
+        updateApplicantStatus,
+        updateEmployer,
+        updateUser,
         setSearchQuery,
         allJobs,
         jobsLoading,
@@ -342,6 +582,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         reloadJobs,
         calculateSkillMatchScore,
         calculateMatchScore,
+        hasApplied,
+        getApplicantCount,
+        getApplicantsForJob,
       }}
     >
       {children}
@@ -350,7 +593,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 }
 
 export function useApp() {
-  const context = useContext(AppContext)
-  if (!context) throw new Error('useApp must be used within AppProvider')
-  return context
+  const ctx = useContext(AppContext)
+  if (!ctx) throw new Error('useApp must be used within AppProvider')
+  return ctx
 }

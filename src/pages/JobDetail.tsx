@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react'
 import { useApp } from '../context'
 import { getExternalApplicationUrl } from '../lib/applicationLinks'
 
+function BookmarkIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? '#16a34a' : 'none'} stroke={filled ? '#16a34a' : '#6b7280'} strokeWidth="2">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    </svg>
+  )
+}
+
 function BuildingIcon() {
   return (
     <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5">
@@ -12,29 +20,8 @@ function BuildingIcon() {
 }
 
 export default function JobDetail() {
-  const {
-    allJobs,
-    selectedJobId,
-    navigate,
-    user,
-    calculateMatchScore,
-    calculateSkillMatchScore,
-  } = useApp()
+  const { allJobs, selectedJobId, navigate, prevPage, toggleSave, savedJobIds, hasApplied, user, calculateMatchScore, calculateSkillMatchScore } = useApp()
   const job = allJobs.find(j => j.id === selectedJobId)
-
-  const [matchScore, setMatchScore] = useState<number>(0)
-  useEffect(() => {
-    if (!user || !job) {
-      setMatchScore(0)
-      return
-    }
-
-    const lat = user.lat ?? undefined
-    const lng = user.lng ?? undefined
-    calculateMatchScore(job, lat, lng).then(score =>
-      setMatchScore(Math.round(score * 100))
-    )
-  }, [user, job, calculateMatchScore])
 
   if (!job) {
     return (
@@ -47,8 +34,21 @@ export default function JobDetail() {
     )
   }
 
-  const skillScore = user ? calculateSkillMatchScore(job) : 0
+  const saved = savedJobIds.includes(job.id)
+  const applied = hasApplied(job.id)
   const applicationUrl = getExternalApplicationUrl(job)
+  const skillScore = user && job ? calculateSkillMatchScore(job) : 0
+
+  // Async Dijkstra-based composite score.
+  // No user location is available on this page, so G(a,j) uses the user's
+  // stored barangay centroid if present, otherwise G=0 (skill-only score).
+  const [matchScore, setMatchScore] = useState<number>(0)
+  useEffect(() => {
+    if (!user || !job) { setMatchScore(0); return }
+    const lat = user.lat ?? undefined
+    const lng = user.lng ?? undefined
+    calculateMatchScore(job, lat, lng).then(s => setMatchScore(Math.round(s * 100)))
+  }, [user, job, calculateMatchScore])
 
   return (
     <div style={{ background: '#f9fafb', minHeight: '100vh' }} className="px-4 py-8">
@@ -79,6 +79,12 @@ export default function JobDetail() {
                   <h1 className="text-xl font-bold text-gray-900 mb-1">{job.title}</h1>
                   <p style={{ color: '#16a34a' }} className="text-sm font-semibold">{job.company}</p>
                 </div>
+                <button
+                  onClick={() => toggleSave(job.id)}
+                  className="hover:scale-110 transition-transform mt-1"
+                >
+                  <BookmarkIcon filled={saved} />
+                </button>
               </div>
 
               <div className="flex flex-wrap gap-2 mt-2">
@@ -132,27 +138,44 @@ export default function JobDetail() {
             />
           </div>
 
-          {/* Applications leave JobFinder and go only to the verified source. */}
-          <div className="mb-8">
+          {/* Action buttons */}
+          <div className="flex gap-3 mb-8">
             {applicationUrl ? (
               <a
                 href={applicationUrl}
                 target={applicationUrl.startsWith('mailto:') ? undefined : '_blank'}
                 rel="noopener noreferrer"
                 style={{ background: '#16a34a', color: '#fff', borderRadius: 6 }}
-                className="block w-full py-2.5 text-center text-sm font-semibold transition-opacity hover:opacity-90"
+                className="flex-1 py-2.5 text-center text-sm font-semibold hover:opacity-90 transition-opacity"
               >
                 Apply at Verified Source
               </a>
             ) : (
               <button
-                type="button"
-                disabled
-                className="w-full cursor-not-allowed rounded-md bg-gray-300 py-2.5 text-sm font-semibold text-gray-600"
+                onClick={() => navigate('apply', job.id)}
+                disabled={applied}
+                style={{
+                  background: applied ? '#9ca3af' : '#16a34a',
+                  color: '#fff',
+                  borderRadius: 6,
+                }}
+                className="flex-1 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity disabled:cursor-not-allowed"
               >
-                Application link unavailable
+                {applied ? 'Already Applied' : 'Apply Now'}
               </button>
             )}
+            <button
+              onClick={() => toggleSave(job.id)}
+              style={{
+                border: `1px solid ${saved ? '#16a34a' : '#d1d5db'}`,
+                color: saved ? '#16a34a' : '#374151',
+                borderRadius: 6,
+              }}
+              className="flex-1 py-2.5 text-sm font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+            >
+              <BookmarkIcon filled={saved} />
+              {saved ? 'Saved' : 'Save Job'}
+            </button>
           </div>
 
           {/* Description */}

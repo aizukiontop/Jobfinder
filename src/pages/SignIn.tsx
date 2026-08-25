@@ -1,34 +1,10 @@
 import { useState } from 'react'
 import { useApp } from '../context'
-import type { User, Employer } from '../types'
+import { ApiRequestError } from '../lib/api'
 import jobfinderLogo from '../assets/jobfinder-logo.png'
 
-function loadAccounts(): User[] {
-  try {
-    return JSON.parse(
-      localStorage.getItem('jf_accounts') ?? '[]'
-    )
-  } catch {
-    return []
-  }
-}
-
-function loadEmployers(): Employer[] {
-  try {
-    return JSON.parse(
-      localStorage.getItem('jf_employers') ?? '[]'
-    )
-  } catch {
-    return []
-  }
-}
-
 export default function SignIn() {
-  const {
-    navigate,
-    setUser,
-    setEmployer,
-  } = useApp()
+  const { navigate, signIn } = useApp()
 
   const [email, setEmail] =
     useState('')
@@ -45,82 +21,24 @@ export default function SignIn() {
   const [loading, setLoading] =
     useState(false)
 
-  const handleSubmit = (
-    e: React.FormEvent
-  ) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     setError('')
     setLoading(true)
 
-    setTimeout(() => {
-      /*
-       * FIRST CHECK EMPLOYERS
-       */
-
-      const employers =
-        loadEmployers()
-
-      const foundEmployer =
-        employers.find(
-          employer =>
-            employer.email.toLowerCase() ===
-              email.toLowerCase() &&
-            employer.password === password
-        )
-
-      if (foundEmployer) {
-        setEmployer(foundEmployer)
-
-        // Clear any Job Seeker session
-        setUser(null)
-
-        navigate(
-          'employer-dashboard'
-        )
-
-        setLoading(false)
-        return
-      }
-
-      /*
-       * THEN CHECK JOB SEEKERS
-       */
-
-      const accounts =
-        loadAccounts()
-
-      const foundUser =
-        accounts.find(
-          account =>
-            account.email.toLowerCase() ===
-              email.toLowerCase() &&
-            account.password === password
-        )
-
-      if (foundUser) {
-        setUser({
-          ...foundUser,
-          role:
-            foundUser.role ??
-            'job-seeker',
-        })
-
-        // Clear any Employer session
-        setEmployer(null)
-
-        navigate('home')
-
-        setLoading(false)
-        return
-      }
-
+    try {
+      const role = await signIn(email, password, rememberMe)
+      navigate(role === 'employer' ? 'employer-dashboard' : 'home')
+    } catch (err) {
       setError(
-        'Invalid email or password. Please try again.'
+        err instanceof ApiRequestError
+          ? err.message
+          : 'Unable to reach the JobFinder server. Please try again.'
       )
-
+    } finally {
       setLoading(false)
-    }, 400)
+    }
   }
 
   return (

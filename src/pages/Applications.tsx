@@ -31,7 +31,6 @@ export default function Applications() {
 
         {applications.length === 0 ? (
           <div className="text-center py-20">
-            <div className="text-5xl mb-4">📋</div>
             <h2 className="text-lg font-semibold text-gray-700 mb-2">No applications yet.</h2>
             <p className="text-sm text-gray-500 mb-6">
               Find a job and click Apply Now to get started.
@@ -107,18 +106,6 @@ export default function Applications() {
           </div>
         )}
       </div>
-
-      {/* Footer */}
-      <footer style={{ borderTop: '1px solid #e5e7eb', background: '#fff' }} className="mt-12 py-6 px-4">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
-          <p className="text-xs text-gray-400">© 2026 JobFinder. All rights reserved.</p>
-          <div className="flex gap-4">
-            {['Terms', 'Privacy', 'Accessibility', 'Contact'].map(l => (
-              <button key={l} style={{ color: '#16a34a' }} className="text-xs hover:underline">{l}</button>
-            ))}
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }

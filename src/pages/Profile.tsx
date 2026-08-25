@@ -1,19 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useApp } from '../context'
+import { uploadResume } from '../lib/api'
 import { CATEGORIES, EMPLOYMENT_TYPES, EXPERIENCE_LEVELS } from '../data'
-
-function saveAccountUpdate(updated: ReturnType<typeof import('../context')['useApp']>['user']) {
-  if (!updated) return
-  try {
-    const accounts = JSON.parse(localStorage.getItem('jf_accounts') ?? '[]')
-    const idx = accounts.findIndex((a: { id: string }) => a.id === updated.id)
-    if (idx !== -1) accounts[idx] = updated
-    else accounts.push(updated)
-    localStorage.setItem('jf_accounts', JSON.stringify(accounts))
-  } catch {
-    // ignore
-  }
-}
 
 export default function Profile() {
   const { user, updateUser, navigate } = useApp()
@@ -84,8 +72,6 @@ export default function Profile() {
       resumeDate,
     }
     updateUser(updates)
-    const updatedUser = { ...user, ...updates }
-    saveAccountUpdate(updatedUser)
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
   }
@@ -97,20 +83,26 @@ export default function Profile() {
     reader.onload = ev => {
       const photo = ev.target?.result as string
       updateUser({ photo })
-      saveAccountUpdate({ ...user, photo })
     }
     reader.readAsDataURL(file)
   }
 
-  const handleResumeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const name = file.name
-    const date = new Date().toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })
-    setResumeName(name)
-    setResumeDate(date)
-    updateUser({ resumeName: name, resumeDate: `Updated ${date}` })
-    saveAccountUpdate({ ...user, resumeName: name, resumeDate: `Updated ${date}` })
+
+    try {
+      const stored = await uploadResume(file)
+      const date = new Date(stored.updatedAt).toLocaleDateString('en-PH', {
+        month: 'long',
+        year: 'numeric',
+      })
+      setResumeName(stored.name)
+      setResumeDate(date)
+      updateUser({ resumeName: stored.name, resumeDate: `Updated ${date}` })
+    } catch {
+      setResumeName('Upload failed. Please choose a PDF or DOCX under 5 MB.')
+    }
   }
 
   return (
@@ -386,18 +378,6 @@ export default function Profile() {
           )}
         </div>
       </div>
-
-      {/* Footer */}
-      <footer style={{ borderTop: '1px solid #e5e7eb', background: '#fff' }} className="py-6 px-4">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
-          <p className="text-xs text-gray-400">© 2026 JobFinder. All rights reserved.</p>
-          <div className="flex gap-4">
-            {['Terms', 'Privacy', 'Accessibility', 'Contact'].map(l => (
-              <button key={l} style={{ color: '#16a34a' }} className="text-xs hover:underline">{l}</button>
-            ))}
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useApp } from '../context'
+import { ApiRequestError } from '../lib/api'
 import type { Application } from '../types'
 
 function UploadIcon() {
@@ -23,7 +24,7 @@ function BuildingIcon() {
 }
 
 export default function ApplicationForm() {
-  const { allJobs, selectedJobId, navigate, prevPage, addApplication, hasApplied, user } = useApp()
+  const { allJobs, selectedJobId, navigate, prevPage, submitApplication, hasApplied, user } = useApp()
   const job = allJobs.find(j => j.id === selectedJobId)
 
   const [form, setForm] = useState({
@@ -34,6 +35,7 @@ export default function ApplicationForm() {
     coverLetter: '',
   })
   const [resumeFile, setResumeFile] = useState<File | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -61,32 +63,36 @@ export default function ApplicationForm() {
     return e
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const errs = validate()
     if (Object.keys(errs).length > 0) {
       setErrors(errs)
       return
     }
+    if (!resumeFile) return
 
-    const app: Application = {
-      id: `app-${Date.now()}`,
-      jobId: job.id,
-      jobTitle: job.title,
-      company: job.company,
-      dateApplied: new Date().toISOString(),
-      status: 'applied',
-      firstName: form.firstName,
-      lastName: form.lastName,
-      email: form.email,
-      phone: form.phone,
-      coverLetter: form.coverLetter,
-      // Snapshot skills at time of application for employer ranking
-      applicantSkills: user?.skills ?? [],
+    setSubmitting(true)
+    try {
+      await submitApplication(job.id, {
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.email,
+        phone: form.phone,
+        coverLetter: form.coverLetter,
+        resume: resumeFile,
+      })
+      setSubmitted(true)
+    } catch (err) {
+      setErrors({
+        resume:
+          err instanceof ApiRequestError
+            ? err.message
+            : 'Unable to reach the JobFinder server. Please try again.',
+      })
+    } finally {
+      setSubmitting(false)
     }
-
-    addApplication(app)
-    setSubmitted(true)
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -342,10 +348,11 @@ export default function ApplicationForm() {
             </button>
             <button
               type="submit"
+              disabled={submitting}
               style={{ background: '#16a34a', color: '#fff', borderRadius: 6 }}
-              className="px-6 py-2.5 text-sm font-semibold hover:bg-green-700 transition-colors"
+              className="px-6 py-2.5 text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-60"
             >
-              Submit Application
+              {submitting ? 'Submitting…' : 'Submit Application'}
             </button>
           </div>
         </form>

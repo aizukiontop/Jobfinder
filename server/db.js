@@ -105,11 +105,14 @@ export function seedVerifiedJobs(db, datasetPath = verifiedJobsPath) {
   const raw = readFileSync(datasetPath)
   const hash = createHash('sha256').update(raw).digest('hex')
   const jobs = JSON.parse(raw.toString('utf8'))
-  if (!Array.isArray(jobs) || jobs.length !== 31) {
-    throw new Error(`Verified job seed must contain exactly 31 records; found ${jobs?.length ?? 'invalid'}`)
+  if (!Array.isArray(jobs) || jobs.length === 0) {
+    throw new Error('Verified job seed must contain at least one record')
   }
   if (jobs.some((job) => job.dataSource !== 'external-verified')) {
     throw new Error('Verified job seed contains a non-verified record')
+  }
+  for (const job of jobs) {
+    if (job.coordinateSource === 'google-maps-verified') job.coordinateSource = 'exact-address'
   }
 
   const upsert = db.prepare(`

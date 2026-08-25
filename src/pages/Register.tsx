@@ -1,43 +1,10 @@
 import { useState } from 'react'
 import { useApp } from '../context'
-import type { User, Employer, UserRole } from '../types'
-
-function loadAccounts(): User[] {
-  try {
-    return JSON.parse(
-      localStorage.getItem('jf_accounts') ?? '[]'
-    )
-  } catch {
-    return []
-  }
-}
-
-function saveAccounts(accounts: User[]) {
-  localStorage.setItem(
-    'jf_accounts',
-    JSON.stringify(accounts)
-  )
-}
-
-function loadEmployers(): Employer[] {
-  try {
-    return JSON.parse(
-      localStorage.getItem('jf_employers') ?? '[]'
-    )
-  } catch {
-    return []
-  }
-}
-
-function saveEmployers(employers: Employer[]) {
-  localStorage.setItem(
-    'jf_employers',
-    JSON.stringify(employers)
-  )
-}
+import { ApiRequestError } from '../lib/api'
+import type { UserRole } from '../types'
 
 export default function Register() {
-  const { navigate, setUser, setEmployer } = useApp()
+  const { navigate, signUp } = useApp()
 
   const [role, setRole] =
     useState<UserRole>('job-seeker')
@@ -107,9 +74,7 @@ export default function Register() {
     return e
   }
 
-  const handleSubmit = (
-    e: React.FormEvent
-  ) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const errs = validate()
@@ -121,106 +86,43 @@ export default function Register() {
 
     setLoading(true)
 
-    setTimeout(() => {
+    try {
       if (role === 'job-seeker') {
-        const accounts = loadAccounts()
-
-        if (
-          accounts.some(
-            a =>
-              a.email.toLowerCase() ===
-              form.email.toLowerCase()
-          )
-        ) {
-          setErrors({
-            email:
-              'An account with this email already exists.',
-          })
-
-          setLoading(false)
-          return
-        }
-
-        const newUser: User = {
-          id: `user-${Date.now()}`,
+        await signUp({
+          role: 'job-seeker',
           email: form.email,
           password: form.password,
           firstName: form.firstName,
           lastName: form.lastName,
-          headline: '',
-          photo: '',
-          skills: [],
-          preferredLocation: 'Angeles City',
-          preferredEmploymentType: 'Full-time',
-          careerCategory: '',
-          education: '',
-          experienceLevel: 'Entry level',
-          resumeName: '',
-          resumeDate: '',
-          role: 'job-seeker',
-        }
-
-        saveAccounts([
-          ...accounts,
-          newUser,
-        ])
-
-        setUser(newUser)
-
+        })
         navigate('profile')
       } else {
-        const employers =
-          loadEmployers()
-
-        if (
-          employers.some(
-            e =>
-              e.email.toLowerCase() ===
-              form.email.toLowerCase()
-          )
-        ) {
-          setErrors({
-            email:
-              'An employer account with this email already exists.',
-          })
-
-          setLoading(false)
-          return
-        }
-
-        const newEmployer: Employer = {
-          id: `employer-${Date.now()}`,
+        await signUp({
+          role: 'employer',
           email: form.email,
           password: form.password,
+          companyName: form.companyName,
+          industry: form.industry,
           contactName:
-            `${form.firstName} ${form.lastName}`.trim() ||
-            'Company Administrator',
-          companyName:
-            form.companyName,
-          industry:
-            form.industry,
-          description: '',
-          address:
-            'Angeles City, Pampanga',
-          contactEmail:
-            form.email,
-          contactPhone: '',
-          website: '',
-          companySize: '',
-        }
-
-        saveEmployers([
-          ...employers,
-          newEmployer,
-        ])
-
-        setEmployer(newEmployer)
-
+            `${form.firstName} ${form.lastName}`.trim() || 'Company Administrator',
+        })
         navigate('employer-dashboard')
       }
-
+    } catch (err) {
+      if (err instanceof ApiRequestError) {
+        setErrors(
+          Object.keys(err.fields).length > 0
+            ? err.fields
+            : { email: err.message }
+        )
+      } else {
+        setErrors({
+          email: 'Unable to reach the JobFinder server. Please try again.',
+        })
+      }
+    } finally {
       setLoading(false)
-    }, 400)
+    }
   }
 
   const updateField = (

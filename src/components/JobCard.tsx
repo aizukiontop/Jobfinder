@@ -8,6 +8,14 @@ interface JobCardProps {
   showMatch?: boolean
 }
 
+function BookmarkIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? '#16a34a' : 'none'} stroke={filled ? '#16a34a' : '#9ca3af'} strokeWidth="2">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    </svg>
+  )
+}
+
 function BuildingIcon() {
   return (
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5">
@@ -45,7 +53,8 @@ function MoneyIcon() {
 }
 
 export default function JobCard({ job, compact = false, showMatch = false }: JobCardProps) {
-  const { navigate, user, calculateMatchScore } = useApp()
+  const { navigate, toggleSave, savedJobIds, user, calculateMatchScore } = useApp()
+  const saved = savedJobIds.includes(job.id)
 
   // Async Dijkstra-based match score (no location available on Home page — skill-only)
   const [matchScore, setMatchScore] = useState(0)
@@ -105,6 +114,9 @@ export default function JobCard({ job, compact = false, showMatch = false }: Job
           <span className="text-xs text-gray-400 flex items-center gap-1">
             <ClockIcon /> {timeLabel}
           </span>
+          <button onClick={() => toggleSave(job.id)} className="hover:scale-110 transition-transform">
+            <BookmarkIcon filled={saved} />
+          </button>
         </div>
       </div>
 
