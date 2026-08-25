@@ -81,6 +81,7 @@ export default function Search() {
   const [expLevels, setExpLevels] = useState<string[]>([])
   const [barangayFilter, setBarangayFilter] = useState<string>('All Angeles City')
   const [showMap, setShowMap] = useState(true)
+  const [mapExpanded, setMapExpanded] = useState(false)
   const [showMobileFilters, setShowMobileFilters] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
@@ -675,27 +676,68 @@ export default function Search() {
 
         {/* Map */}
         {showMap && (
-          <div style={{ width: '100%', maxWidth: 380, flexShrink: 0 }} className="block lg:w-[380px]">
-            <div style={{
-              border: '1px solid #e5e7eb',
-              borderRadius: 8,
-              overflow: 'hidden',
-              height: 500,
-              position: 'sticky',
-              top: 70,
-            }}>
-              <MapView
-                jobs={sorted}
-                selectedJobId={selectedJobId}
-                onSelectJob={id => setSelectedJobId(id === selectedJobId ? null : id)}
-                userLat={userInsideCity === true ? userLat : null}
-                userLng={userInsideCity === true ? userLng : null}
-                onMapClick={pinMode ? handleMapClick : null}
-                pinMode={pinMode}
-              />
+          <div className="order-first w-full flex-shrink-0 lg:order-none lg:w-[380px] lg:max-w-[380px]">
+            <div
+              className={
+                mapExpanded
+                  ? 'fixed inset-0 z-[2000] flex flex-col bg-white p-3 lg:static lg:z-auto lg:block lg:p-0'
+                  : ''
+              }
+            >
+              {mapExpanded && (
+                <div className="mb-2 flex items-center justify-between lg:hidden">
+                  <span className="text-sm font-semibold text-gray-800">Job map</span>
+                  <button
+                    type="button"
+                    onClick={() => setMapExpanded(false)}
+                    style={{ border: '1px solid #d1d5db', borderRadius: 6 }}
+                    className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+
+              <div
+                style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}
+                className={
+                  mapExpanded
+                    ? 'relative min-h-0 flex-1 lg:sticky lg:top-[70px] lg:h-[500px] lg:flex-none'
+                    : 'relative h-[200px] lg:sticky lg:top-[70px] lg:h-[500px]'
+                }
+              >
+                <MapView
+                  jobs={sorted}
+                  selectedJobId={selectedJobId}
+                  onSelectJob={id => setSelectedJobId(id === selectedJobId ? null : id)}
+                  userLat={userInsideCity === true ? userLat : null}
+                  userLng={userInsideCity === true ? userLng : null}
+                  onMapClick={pinMode ? handleMapClick : null}
+                  pinMode={pinMode}
+                  minHeight={mapExpanded ? 400 : 0}
+                  resizeSignal={mapExpanded}
+                />
+
+                {!mapExpanded && (
+                  <button
+                    type="button"
+                    onClick={() => setMapExpanded(true)}
+                    aria-label="Expand the job map"
+                    className="absolute inset-0 z-[1000] flex items-end justify-center pb-2 lg:hidden"
+                    style={{ background: 'transparent' }}
+                  >
+                    <span
+                      style={{ background: 'rgba(255,255,255,0.95)', border: '1px solid #d1d5db', borderRadius: 999 }}
+                      className="px-3 py-1 text-xs font-semibold text-gray-700 shadow-sm"
+                    >
+                      Tap to expand map
+                    </span>
+                  </button>
+                )}
+              </div>
             </div>
 
-            {selectedJob && (
+            {selectedJob && !mapExpanded && (
               <div
                 style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', marginTop: 8 }}
                 className="p-4"

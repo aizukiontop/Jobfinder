@@ -41,6 +41,10 @@ interface MapViewProps {
   onMapClick?: ((lat: number, lng: number) => void) | null
   /** When true, shows a visual cursor/hint that the map is in pin-placement mode */
   pinMode?: boolean
+  /** Minimum rendered height; lower it for compact previews. */
+  minHeight?: number
+  /** Change this value whenever the container resizes so Leaflet recomputes tiles. */
+  resizeSignal?: unknown
 }
 
 // ─── Marker icons ──────────────────────────────────────────────────────────────
@@ -157,7 +161,7 @@ function buildNodeLayer(
 
 export default function MapView({
   jobs, selectedJobId, onSelectJob, userLat, userLng, onRouteComputed,
-  onMapClick, pinMode,
+  onMapClick, pinMode, minHeight = 400, resizeSignal,
 }: MapViewProps) {
   // Map + Leaflet refs
   const mapContainerRef = useRef<HTMLDivElement>(null)
@@ -313,6 +317,12 @@ export default function MapView({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!mapRef.current) return
+    const id = window.setTimeout(() => mapRef.current?.invalidateSize(), 250)
+    return () => window.clearTimeout(id)
+  }, [resizeSignal])
 
   // ── Update job markers ────────────────────────────────────────────────────
   useEffect(() => {
@@ -484,7 +494,7 @@ export default function MapView({
       {/* Leaflet canvas */}
       <div
         ref={mapContainerRef}
-        style={{ width: '100%', height: '100%', minHeight: 400, zIndex: 0, background: '#e5e7eb' }}
+        style={{ width: '100%', height: '100%', minHeight, zIndex: 0, background: '#e5e7eb' }}
       />
 
       {/* ── "Show Road Graph" toggle ──────────────────────────────────────── */}
