@@ -174,6 +174,21 @@ export function deleteResume(): Promise<void> {
   return request<void>('/me/resume', { method: 'DELETE' })
 }
 
+export async function uploadPhoto(file: File): Promise<string> {
+  const form = new FormData()
+  form.append('photo', file)
+  const body = await request<{ photo: string }>('/me/photo', {
+    method: 'PUT',
+    body: form,
+    raw: true,
+  })
+  return body.photo
+}
+
+export function deletePhoto(): Promise<void> {
+  return request<void>('/me/photo', { method: 'DELETE' })
+}
+
 export const resumeDownloadUrl = `${BASE}/me/resume/download`
 
 export function applicationResumeUrl(applicationId: string): string {

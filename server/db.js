@@ -65,12 +65,19 @@ function rebuildJobsConstraint(db) {
   return true
 }
 
+function ensureColumn(db, table, column, definition) {
+  const existing = db.pragma(`table_info(${table})`)
+  if (existing.some((col) => col.name === column)) return
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
+}
+
 export function migrate(db) {
   const schema = readFileSync(schemaPath, 'utf8')
   db.exec(schema)
   if (rebuildJobsConstraint(db)) {
     db.exec(schema)
   }
+  ensureColumn(db, 'job_seeker_profiles', 'photo_key', 'TEXT')
 }
 
 function ensureSkill(db, name) {

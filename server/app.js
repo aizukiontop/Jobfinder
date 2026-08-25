@@ -179,7 +179,7 @@ function seekerProfile(db, user) {
     resume: resume ? { id: resume.id, name: resume.original_name, updatedAt: resume.created_at } : null,
     resumeName: resume?.original_name ?? '',
     resumeDate: resume?.created_at ?? '',
-    photo: '',
+    photo: row.photo_key ? `/api/me/photo?v=${row.photo_key.slice(0, 8)}` : '',
   }
 }
 
@@ -271,8 +271,10 @@ export function createApp(config) {
   mkdirSync(config.uploadDir, { recursive: true })
   const tempDir = path.join(config.uploadDir, 'tmp')
   const resumeDir = path.join(config.uploadDir, 'resumes')
+  const photoDir = path.join(config.uploadDir, 'photos')
   mkdirSync(tempDir, { recursive: true })
   mkdirSync(resumeDir, { recursive: true })
+  mkdirSync(photoDir, { recursive: true })
 
   const db = openDatabase(config.dbPath)
   initializeDatabase(db, { seed: config.seedOnStart })
@@ -573,6 +575,59 @@ export function createApp(config) {
     `).get(req.auth.id)
     if (!file) return next(new ApiError(404, 'RESUME_NOT_FOUND', 'Resume not found.'))
     res.type(file.mime_type).set('X-Content-Type-Options', 'nosniff').download(path.join(resumeDir, file.storage_key), file.original_name)
+  })
+
+  const photoUpload = multer({
+    storage: multer.diskStorage({ destination: tempDir, filename: (_req, _file, cb) => cb(null, randomUUID()) }),
+    limits: { fileSize: 2 * 1024 * 1024, files: 1, fields: 0 },
+  })
+
+  const PHOTO_TYPES = new Map([
+    ['image/png', '.png'],
+    ['image/jpeg', '.jpg'],
+    ['image/webp', '.webp'],
+  ])
+
+  app.put('/api/me/photo', requireAuth, requireRole('job-seeker'), photoUpload.single('photo'), asyncRoute(async (req, res) => {
+    if (!req.file) throw new ApiError(400, 'PHOTO_REQUIRED', 'Choose a PNG, JPEG or WebP image.')
+    let storedKey
+    try {
+      const detected = await fileTypeFromFile(req.file.path)
+      if (!detected || !PHOTO_TYPES.has(detected.mime)) {
+        throw new ApiError(400, 'INVALID_PHOTO', 'Only genuine PNG, JPEG or WebP images are accepted.')
+      }
+      storedKey = `${randomUUID()}${PHOTO_TYPES.get(detected.mime)}`
+      renameSync(req.file.path, path.join(photoDir, storedKey))
+    } catch (error) {
+      removeIfPresent(req.file?.path)
+      throw error
+    }
+
+    const previous = db.prepare('SELECT photo_key FROM job_seeker_profiles WHERE user_id=?').get(req.auth.id)
+    db.prepare('UPDATE job_seeker_profiles SET photo_key=?,updated_at=? WHERE user_id=?')
+      .run(storedKey, nowIso(), req.auth.id)
+    if (previous?.photo_key && previous.photo_key !== storedKey) {
+      removeIfPresent(path.join(photoDir, previous.photo_key))
+    }
+
+    res.status(201).json({ photo: `/api/me/photo?v=${storedKey.slice(0, 8)}` })
+  }))
+
+  app.get('/api/me/photo', requireAuth, requireRole('job-seeker'), (req, res, next) => {
+    const row = db.prepare('SELECT photo_key FROM job_seeker_profiles WHERE user_id=?').get(req.auth.id)
+    if (!row?.photo_key) return next(new ApiError(404, 'PHOTO_NOT_FOUND', 'No profile photo has been uploaded.'))
+    res.set('X-Content-Type-Options', 'nosniff')
+    res.set('Cache-Control', 'private, max-age=300')
+    res.sendFile(path.join(photoDir, row.photo_key))
+  })
+
+  app.delete('/api/me/photo', requireAuth, requireRole('job-seeker'), (req, res) => {
+    const row = db.prepare('SELECT photo_key FROM job_seeker_profiles WHERE user_id=?').get(req.auth.id)
+    if (row?.photo_key) {
+      db.prepare('UPDATE job_seeker_profiles SET photo_key=NULL,updated_at=? WHERE user_id=?').run(nowIso(), req.auth.id)
+      removeIfPresent(path.join(photoDir, row.photo_key))
+    }
+    res.status(204).end()
   })
 
   app.get('/api/me/saved-jobs', requireAuth, requireRole('job-seeker'), (req, res) => {

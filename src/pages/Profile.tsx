@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useApp } from '../context'
-import { deleteResume, uploadResume } from '../lib/api'
+import { ApiRequestError } from '../lib/api'
+import { deletePhoto, deleteResume, uploadPhoto, uploadResume } from '../lib/api'
 import { formatRelativeDate } from '../lib/formatDate'
 import { CATEGORIES, EMPLOYMENT_TYPES, EXPERIENCE_LEVELS } from '../data'
 
@@ -22,6 +23,8 @@ export default function Profile() {
   const [resumeName, setResumeName] = useState(user?.resumeName ?? '')
   const [resumeDate, setResumeDate] = useState(user?.resumeDate ?? '')
   const [visibility, setVisibility] = useState<'Public' | 'Private'>('Public')
+  const [photoUrl, setPhotoUrl] = useState(user?.photo ?? '')
+  const [photoError, setPhotoError] = useState('')
   const photoInputRef = useRef<HTMLInputElement>(null)
   const resumeInputRef = useRef<HTMLInputElement>(null)
 
@@ -40,6 +43,7 @@ export default function Profile() {
       })
       setResumeName(user.resumeName)
       setResumeDate(user.resumeDate)
+      setPhotoUrl(user.photo)
     }
   }, [user])
 
@@ -77,15 +81,30 @@ export default function Profile() {
     setTimeout(() => setSaved(false), 2500)
   }
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => {
-      const photo = ev.target?.result as string
-      updateUser({ photo })
+
+    setPhotoError('')
+    try {
+      setPhotoUrl(await uploadPhoto(file))
+    } catch (err) {
+      setPhotoError(
+        err instanceof ApiRequestError
+          ? err.message
+          : 'The photo could not be uploaded. Please try again.'
+      )
     }
-    reader.readAsDataURL(file)
+  }
+
+  const handlePhotoRemove = async () => {
+    setPhotoError('')
+    try {
+      await deletePhoto()
+      setPhotoUrl('')
+    } catch {
+      setPhotoError('The photo could not be removed. Please try again.')
+    }
   }
 
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,8 +147,8 @@ export default function Profile() {
               style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 999 }}
               className="w-20 h-20 flex items-center justify-center overflow-hidden flex-shrink-0"
             >
-              {user.photo ? (
-                <img src={user.photo} alt="Profile" className="w-full h-full object-cover" />
+              {photoUrl ? (
+                <img src={photoUrl} alt="Profile" className="w-full h-full object-cover" />
               ) : (
                 <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -150,17 +169,18 @@ export default function Profile() {
                 >
                   Upload New Photo
                 </button>
-                {user.photo && (
+                {photoUrl && (
                   <button
-                    onClick={() => updateUser({ photo: '' })}
+                    onClick={handlePhotoRemove}
                     style={{ border: '1px solid #fca5a5', borderRadius: 6, color: '#dc2626' }}
                     className="px-3 py-1.5 text-xs font-medium hover:bg-red-50"
                   >
                     Delete
                   </button>
                 )}
-                <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                <input ref={photoInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handlePhotoUpload} className="hidden" />
               </div>
+              {photoError && <p className="text-xs text-red-500 mt-2">{photoError}</p>}
             </div>
           </div>
           <div style={{ borderTop: '1px solid #f3f4f6' }} className="pt-4 flex items-center justify-between">
