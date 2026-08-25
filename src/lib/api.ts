@@ -115,6 +115,10 @@ export interface AdminUsersResponse {
   totals: { users: number; seekers: number; employers: number }
 }
 
+export function deleteAdminJob(jobId: string): Promise<void> {
+  return request<void>(`/admin/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' })
+}
+
 export function fetchAdminUsers(signal?: AbortSignal): Promise<AdminUsersResponse> {
   return request<AdminUsersResponse>('/admin/users', { signal })
 }

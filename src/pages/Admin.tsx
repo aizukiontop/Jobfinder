@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '../context'
-import { fetchAdminUsers, type AdminUser } from '../lib/api'
+import { ApiRequestError, deleteAdminJob, fetchAdminUsers, type AdminUser } from '../lib/api'
 import { formatRelativeDate } from '../lib/formatDate'
 
 function Stat({ label, value }: { label: string; value: number }) {
@@ -39,15 +39,39 @@ export default function Admin() {
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [removing, setRemoving] = useState<string | null>(null)
+  const [jobError, setJobError] = useState('')
+
+  const load = async (signal?: AbortSignal) => {
+    const data = await fetchAdminUsers(signal)
+    setUsers(data.items)
+    setTotals(data.totals)
+  }
+
+  const removeJob = async (jobId: string, title: string) => {
+    if (!window.confirm(`Remove the posting "${title || 'Untitled'}"? This cannot be undone.`)) return
+    setJobError('')
+    setRemoving(jobId)
+    try {
+      await deleteAdminJob(jobId)
+      await load()
+    } catch (err) {
+      setJobError(
+        err instanceof ApiRequestError
+          ? err.message
+          : 'The posting could not be removed.'
+      )
+    } finally {
+      setRemoving(null)
+    }
+  }
 
   useEffect(() => {
     if (!isAdmin) return
     const controller = new AbortController()
     void (async () => {
       try {
-        const data = await fetchAdminUsers(controller.signal)
-        setUsers(data.items)
-        setTotals(data.totals)
+        await load(controller.signal)
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return
         setError('The user list could not be loaded.')
@@ -159,6 +183,7 @@ export default function Admin() {
                         <p className="text-xs font-semibold text-gray-700 mb-2">
                           Jobs posted by {u.name || u.email}
                         </p>
+                        {jobError && <p className="text-xs text-red-600 mb-2">{jobError}</p>}
                         <div className="space-y-1">
                           {u.jobs.map(j => (
                             <div key={j.id} className="flex flex-wrap items-center gap-2 text-xs">
@@ -178,6 +203,14 @@ export default function Admin() {
                                 · {j.applicants} applicant{j.applicants === 1 ? '' : 's'}
                               </span>
                               <span className="text-gray-400">· {formatRelativeDate(j.postedAt)}</span>
+                              <button
+                                onClick={() => removeJob(j.id, j.title)}
+                                disabled={removing === j.id}
+                                style={{ border: '1px solid #fca5a5', borderRadius: 6, color: '#dc2626' }}
+                                className="ml-auto px-2 py-0.5 font-medium hover:bg-red-50 disabled:opacity-60"
+                              >
+                                {removing === j.id ? 'Removing…' : 'Remove'}
+                              </button>
                             </div>
                           ))}
                         </div>

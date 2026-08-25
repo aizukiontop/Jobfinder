@@ -707,6 +707,30 @@ export function createApp(config) {
     })
   })
 
+  app.delete('/api/admin/jobs/:jobId', requireAuth, requireAdmin, (req, res, next) => {
+    const job = db.prepare('SELECT id, title, data_source FROM jobs WHERE id=?').get(req.params.jobId)
+    if (!job) return next(new ApiError(404, 'JOB_NOT_FOUND', 'Job not found.'))
+
+    if (job.data_source !== 'employer-created') {
+      return next(new ApiError(409, 'SEEDED_JOB',
+        'Verified listings come from the dataset and would return on the next seed. Remove them from jobs.verified.json instead.'))
+    }
+
+    const applications = db.prepare('SELECT count(*) AS count FROM applications WHERE job_id=?').get(job.id).count
+    if (applications > 0) {
+      return next(new ApiError(409, 'JOB_HAS_APPLICATIONS',
+        `This posting has ${applications} application${applications === 1 ? '' : 's'}. Deleting it would destroy those records.`))
+    }
+
+    db.transaction(() => {
+      db.prepare('DELETE FROM saved_jobs WHERE job_id=?').run(job.id)
+      db.prepare('DELETE FROM job_skills WHERE job_id=?').run(job.id)
+      db.prepare('DELETE FROM jobs WHERE id=?').run(job.id)
+    })()
+
+    res.status(204).end()
+  })
+
   app.get('/api/me/saved-jobs', requireAuth, requireRole('job-seeker'), (req, res) => {
     const jobIds = db.prepare('SELECT job_id FROM saved_jobs WHERE user_id=? ORDER BY created_at DESC').all(req.auth.id).map((r) => r.job_id)
     res.json({ jobIds })
