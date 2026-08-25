@@ -19,7 +19,7 @@ import type {
 } from './types'
 
 import * as api from './lib/api'
-import { skillMatchScore } from './lib/skillMatch'
+import { skillMatchScore, skillMatchBreakdown, type SkillMatchBreakdown } from './lib/skillMatch'
 import { computeMatchScore } from './config/matching'
 import { computeDistanceScore } from './config/geo'
 import { loadRoadGraph, snapToGraph, type RoadGraph } from './lib/roadGraph'
@@ -261,6 +261,16 @@ interface AppState {
 
   /** Ontology-based SkillMatchScore S(a,j), in the range [0,1]. */
   calculateSkillMatchScore: (job: Job) => number
+
+  /** Per-required-skill detail behind S(a,j). */
+  getSkillBreakdown: (job: Job) => SkillMatchBreakdown
+
+  /** Dijkstra DistanceScore G(a,j) on its own, in the range [0,1]. */
+  calculateDistanceScore: (
+    job: Job,
+    lat?: number,
+    lng?: number
+  ) => Promise<number>
 
   /** Composite MatchScore = 0.70*S(a,j) + 0.30*G(a,j). */
   calculateMatchScore: (
@@ -576,6 +586,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return skillMatchScore(required, user.skills)
   }
 
+  const getSkillBreakdown = (job: Job): SkillMatchBreakdown => {
+    const required = job.requiredSkills?.length ? job.requiredSkills : job.skills ?? []
+    return skillMatchBreakdown(required, user?.skills ?? [])
+  }
+
+  const calculateDistanceScore = async (
+    job: Job,
+    lat?: number,
+    lng?: number
+  ): Promise<number> => {
+    if (lat == null || lng == null || !job.lat || !job.lng) return 0
+    return computeDijkstraDistanceScore(lat, lng, job.lat, job.lng)
+  }
+
   const calculateMatchScore = async (
     job: Job,
     lat?: number,
@@ -657,6 +681,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dismissActionError: () => setActionError(null),
         reloadJobs,
         calculateSkillMatchScore,
+        getSkillBreakdown,
+        calculateDistanceScore,
         calculateMatchScore,
         hasApplied,
         getApplicantCount,

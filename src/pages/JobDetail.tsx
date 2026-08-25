@@ -20,7 +20,7 @@ function BuildingIcon() {
 }
 
 export default function JobDetail() {
-  const { allJobs, selectedJobId, navigate, prevPage, toggleSave, savedJobIds, hasApplied, user, calculateMatchScore, calculateSkillMatchScore } = useApp()
+  const { allJobs, selectedJobId, navigate, prevPage, toggleSave, savedJobIds, hasApplied, user, calculateMatchScore, calculateSkillMatchScore, getSkillBreakdown, calculateDistanceScore } = useApp()
   const job = allJobs.find(j => j.id === selectedJobId)
 
   if (!job) {
@@ -43,12 +43,15 @@ export default function JobDetail() {
   // No user location is available on this page, so G(a,j) uses the user's
   // stored barangay centroid if present, otherwise G=0 (skill-only score).
   const [matchScore, setMatchScore] = useState<number>(0)
+  const [distanceScore, setDistanceScore] = useState<number>(0)
+  const breakdown = user && job ? getSkillBreakdown(job) : null
   useEffect(() => {
     if (!user || !job) { setMatchScore(0); return }
     const lat = user.lat ?? undefined
     const lng = user.lng ?? undefined
     calculateMatchScore(job, lat, lng).then(s => setMatchScore(Math.round(s * 100)))
-  }, [user, job, calculateMatchScore])
+    calculateDistanceScore(job, lat, lng).then(s => setDistanceScore(Math.round(s * 100)))
+  }, [user, job, calculateMatchScore, calculateDistanceScore])
 
   return (
     <div style={{ background: '#f9fafb', flex: 1 }} className="px-4 py-8">
@@ -177,6 +180,61 @@ export default function JobDetail() {
               {saved ? 'Saved' : 'Save Job'}
             </button>
           </div>
+
+          {user && breakdown && breakdown.details.length > 0 && (
+            <div
+              style={{ border: '1px solid #e5e7eb', borderRadius: 10, background: '#fff' }}
+              className="p-5 mb-6"
+            >
+              <h3 className="font-semibold text-base text-gray-900 mb-1">Why this match</h3>
+              <p className="text-xs text-gray-500 mb-4">
+                Overall {matchScore}% = 70% skill compatibility + 30% travel accessibility
+              </p>
+
+              <div className="grid grid-cols-2 gap-3 mb-5">
+                <div style={{ background: '#f9fafb', borderRadius: 8 }} className="p-3">
+                  <p className="text-xl font-bold" style={{ color: '#0f2044' }}>
+                    {Math.round(skillScore * 100)}%
+                  </p>
+                  <p className="text-xs text-gray-500">Skill match</p>
+                </div>
+                <div style={{ background: '#f9fafb', borderRadius: 8 }} className="p-3">
+                  <p className="text-xl font-bold" style={{ color: '#0f2044' }}>{distanceScore}%</p>
+                  <p className="text-xs text-gray-500">
+                    {distanceScore > 0 ? 'Travel accessibility' : 'Set a home barangay in your profile'}
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs font-semibold text-gray-700 mb-2">Required skills</p>
+              <div className="space-y-2">
+                {breakdown.details.map(d => {
+                  const exact = d.similarity >= 0.999
+                  const partial = d.similarity > 0 && !exact
+                  const colour = exact ? '#16a34a' : partial ? '#a16207' : '#9ca3af'
+                  return (
+                    <div key={d.required} className="flex items-start gap-2 text-sm">
+                      <span style={{ color: colour }} aria-hidden="true">
+                        {exact ? '✓' : partial ? '≈' : '✕'}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-gray-800">{d.required}</span>
+                        {partial && d.bestMatch && (
+                          <span className="text-xs text-gray-500"> — related to your “{d.bestMatch}”</span>
+                        )}
+                        {!exact && !partial && (
+                          <span className="text-xs text-gray-500"> — not in your skills</span>
+                        )}
+                      </div>
+                      <span className="text-xs font-medium" style={{ color: colour }}>
+                        {Math.round(d.similarity * 100)}%
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Description */}
           <Section title="Job Description">
