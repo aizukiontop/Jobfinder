@@ -678,63 +678,50 @@ export default function Search() {
         {showMap && (
           <div className="order-first w-full flex-shrink-0 lg:order-none lg:w-[380px] lg:max-w-[380px]">
             <div
+              style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}
               className={
                 mapExpanded
-                  ? 'fixed inset-0 z-[2000] flex flex-col bg-white p-3 lg:static lg:z-auto lg:block lg:p-0'
-                  : ''
+                  ? 'relative h-[500px] lg:sticky lg:top-[70px]'
+                  : 'relative h-[200px] lg:sticky lg:top-[70px] lg:h-[500px]'
               }
             >
-              {mapExpanded && (
-                <div className="mb-2 flex items-center justify-between lg:hidden">
-                  <span className="text-sm font-semibold text-gray-800">Job map</span>
-                  <button
-                    type="button"
-                    onClick={() => setMapExpanded(false)}
-                    style={{ border: '1px solid #d1d5db', borderRadius: 6 }}
-                    className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              <MapView
+                jobs={sorted}
+                selectedJobId={selectedJobId}
+                onSelectJob={id => setSelectedJobId(id === selectedJobId ? null : id)}
+                userLat={userInsideCity === true ? userLat : null}
+                userLng={userInsideCity === true ? userLng : null}
+                onMapClick={pinMode ? handleMapClick : null}
+                pinMode={pinMode}
+                minHeight={mapExpanded ? 400 : 0}
+                resizeSignal={mapExpanded}
+              />
+
+              {mapExpanded ? (
+                <button
+                  type="button"
+                  onClick={() => setMapExpanded(false)}
+                  style={{ background: 'rgba(255,255,255,0.95)', border: '1px solid #d1d5db', borderRadius: 999 }}
+                  className="absolute bottom-2 left-1/2 z-[1000] -translate-x-1/2 px-3 py-1 text-xs font-semibold text-gray-700 shadow-sm lg:hidden"
+                >
+                  Collapse map
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setMapExpanded(true)}
+                  aria-label="Expand the job map"
+                  className="absolute inset-0 z-[1000] flex items-end justify-center pb-2 lg:hidden"
+                  style={{ background: 'transparent' }}
+                >
+                  <span
+                    style={{ background: 'rgba(255,255,255,0.95)', border: '1px solid #d1d5db', borderRadius: 999 }}
+                    className="px-3 py-1 text-xs font-semibold text-gray-700 shadow-sm"
                   >
-                    Close
-                  </button>
-                </div>
+                    Tap to expand map
+                  </span>
+                </button>
               )}
-
-              <div
-                style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}
-                className={
-                  mapExpanded
-                    ? 'relative min-h-0 flex-1 lg:sticky lg:top-[70px] lg:h-[500px] lg:flex-none'
-                    : 'relative h-[200px] lg:sticky lg:top-[70px] lg:h-[500px]'
-                }
-              >
-                <MapView
-                  jobs={sorted}
-                  selectedJobId={selectedJobId}
-                  onSelectJob={id => setSelectedJobId(id === selectedJobId ? null : id)}
-                  userLat={userInsideCity === true ? userLat : null}
-                  userLng={userInsideCity === true ? userLng : null}
-                  onMapClick={pinMode ? handleMapClick : null}
-                  pinMode={pinMode}
-                  minHeight={mapExpanded ? 400 : 0}
-                  resizeSignal={mapExpanded}
-                />
-
-                {!mapExpanded && (
-                  <button
-                    type="button"
-                    onClick={() => setMapExpanded(true)}
-                    aria-label="Expand the job map"
-                    className="absolute inset-0 z-[1000] flex items-end justify-center pb-2 lg:hidden"
-                    style={{ background: 'transparent' }}
-                  >
-                    <span
-                      style={{ background: 'rgba(255,255,255,0.95)', border: '1px solid #d1d5db', borderRadius: 999 }}
-                      className="px-3 py-1 text-xs font-semibold text-gray-700 shadow-sm"
-                    >
-                      Tap to expand map
-                    </span>
-                  </button>
-                )}
-              </div>
             </div>
 
             {selectedJob && !mapExpanded && (
