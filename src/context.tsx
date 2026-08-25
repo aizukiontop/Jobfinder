@@ -219,15 +219,15 @@ interface AppState {
 
   setUser: (user: User | null) => void
   setEmployer: (employer: Employer | null) => void
-  toggleSave: (jobId: string) => Promise<void>
+  toggleSave: (jobId: string) => Promise<boolean>
   submitApplication: (jobId: string, input: api.ApplicationInput) => Promise<Application>
   addApplication: (application: Application) => void
   addPostedJob: (job: Job) => void
   addEmployerJob: (job: EmployerJob) => void
-  updateEmployerJob: (id: string, updates: Partial<EmployerJob>) => Promise<void>
-  updateApplicantStatus: (id: string, status: ApplicantRecord['status']) => Promise<void>
-  updateEmployer: (updates: Partial<Employer>) => Promise<void>
-  updateUser: (updates: Partial<User>) => Promise<void>
+  updateEmployerJob: (id: string, updates: Partial<EmployerJob>) => Promise<boolean>
+  updateApplicantStatus: (id: string, status: ApplicantRecord['status']) => Promise<boolean>
+  updateEmployer: (updates: Partial<Employer>) => Promise<boolean>
+  updateUser: (updates: Partial<User>) => Promise<boolean>
   hasApplied: (jobId: string) => boolean
   getApplicantCount: (jobId: string) => number
   getApplicantsForJob: (jobId: string) => ApplicantRecord[]
@@ -250,6 +250,8 @@ interface AppState {
   allJobs: Job[]
   jobsLoading: boolean
   jobsError: string | null
+  actionError: string | null
+  dismissActionError: () => void
   reloadJobs: () => Promise<void>
 
   /** Ontology-based SkillMatchScore S(a,j), in the range [0,1]. */
@@ -285,6 +287,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [allJobs, setAllJobs] = useState<Job[]>([])
   const [jobsLoading, setJobsLoading] = useState(true)
   const [jobsError, setJobsError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const [userLat, setUserLat] = useState<number | null>(null)
   const [userLng, setUserLng] = useState<number | null>(null)
@@ -410,19 +413,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     else setEmployerState(next)
   }
 
-  const toggleSave = async (jobId: string) => {
+  const runAction = async (action: () => Promise<void>): Promise<boolean> => {
+    try {
+      await action()
+      setActionError(null)
+      return true
+    } catch (error) {
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : 'That action could not be completed.'
+      )
+      return false
+    }
+  }
+
+  const toggleSave = (jobId: string) => {
     if (!user) {
       navigate('signin')
-      return
+      return Promise.resolve(false)
     }
 
-    if (savedJobIds.includes(jobId)) {
-      await api.unsaveJob(jobId)
-      setSavedJobIds(prev => prev.filter(id => id !== jobId))
-    } else {
-      await api.saveJob(jobId)
-      setSavedJobIds(prev => [jobId, ...prev])
-    }
+    return runAction(async () => {
+      if (savedJobIds.includes(jobId)) {
+        await api.unsaveJob(jobId)
+        setSavedJobIds(prev => prev.filter(id => id !== jobId))
+      } else {
+        await api.saveJob(jobId)
+        setSavedJobIds(prev => [jobId, ...prev])
+      }
+    })
   }
 
   const submitApplication = async (
@@ -448,30 +468,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setEmployerJobs(prev => [job, ...prev])
   }
 
-  const updateEmployerJob = async (id: string, updates: Partial<EmployerJob>) => {
-    const job = await api.updateEmployerJob(id, updates as Record<string, unknown>)
-    setEmployerJobs(prev =>
-      prev.map(j =>
-        j.id === id ? { ...toEmployerJob(job), applicantCount: j.applicantCount } : j
+  const updateEmployerJob = (id: string, updates: Partial<EmployerJob>) =>
+    runAction(async () => {
+      const job = await api.updateEmployerJob(id, updates as Record<string, unknown>)
+      setEmployerJobs(prev =>
+        prev.map(j =>
+          j.id === id ? { ...toEmployerJob(job), applicantCount: j.applicantCount } : j
+        )
       )
-    )
-    if (updates.status) await reloadJobs()
-  }
+      if (updates.status) await reloadJobs()
+    })
 
-  const updateApplicantStatus = async (id: string, status: ApplicantRecord['status']) => {
-    await api.updateApplicationStatus(id, status)
-    setAllApplicants(prev => prev.map(a => (a.id === id ? { ...a, status } : a)))
-  }
+  const updateApplicantStatus = (id: string, status: ApplicantRecord['status']) =>
+    runAction(async () => {
+      await api.updateApplicationStatus(id, status)
+      setAllApplicants(prev => prev.map(a => (a.id === id ? { ...a, status } : a)))
+    })
 
-  const updateUser = async (updates: Partial<User>) => {
-    const profile = await api.updateProfile(updates)
-    setUserState(toUser(profile))
-  }
+  const updateUser = (updates: Partial<User>) =>
+    runAction(async () => {
+      const profile = await api.updateProfile(updates)
+      setUserState(toUser(profile))
+    })
 
-  const updateEmployer = async (updates: Partial<Employer>) => {
-    const profile = await api.updateProfile(updates)
-    setEmployerState(toEmployer(profile))
-  }
+  const updateEmployer = (updates: Partial<Employer>) =>
+    runAction(async () => {
+      const profile = await api.updateProfile(updates)
+      setEmployerState(toEmployer(profile))
+    })
 
   const setUserLocation = (
     lat: number,
@@ -579,6 +603,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         allJobs,
         jobsLoading,
         jobsError,
+        actionError,
+        dismissActionError: () => setActionError(null),
         reloadJobs,
         calculateSkillMatchScore,
         calculateMatchScore,

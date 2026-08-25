@@ -57,7 +57,7 @@ export default function Profile() {
     )
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const updates = {
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
@@ -71,7 +71,7 @@ export default function Profile() {
       resumeName,
       resumeDate,
     }
-    updateUser(updates)
+    if (!(await updateUser(updates))) return
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
   }

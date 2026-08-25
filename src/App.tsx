@@ -22,7 +22,7 @@ import EmployerApplicants from './pages/employer/EmployerApplicants'
 import EmployerProfile from './pages/employer/EmployerProfile'
 
 function AppContent() {
-  const { page, jobsLoading, jobsError, reloadJobs } = useApp()
+  const { page, jobsLoading, jobsError, reloadJobs, actionError, dismissActionError } = useApp()
 
   const isEmployerPage =
     page === 'employer-dashboard' ||
@@ -119,6 +119,22 @@ function AppContent() {
             className="rounded border border-red-300 bg-white px-3 py-1 font-semibold hover:bg-red-100"
           >
             Try again
+          </button>
+        </div>
+      )}
+
+      {actionError && (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-center gap-3 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-900"
+        >
+          <span>{actionError}</span>
+          <button
+            type="button"
+            onClick={dismissActionError}
+            className="rounded border border-red-300 bg-white px-3 py-1 font-semibold hover:bg-red-100"
+          >
+            Dismiss
           </button>
         </div>
       )}

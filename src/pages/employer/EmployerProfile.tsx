@@ -43,8 +43,8 @@ export default function EmployerProfile() {
     disabled: !editing,
   })
 
-  const handleSave = () => {
-    updateEmployer(form)
+  const handleSave = async () => {
+    if (!(await updateEmployer(form))) return
     setEditing(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)

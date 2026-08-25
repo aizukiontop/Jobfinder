@@ -29,9 +29,9 @@ export default function EmployerApplicants() {
     return matchStatus
   })
 
-  const applyStatusChange = (id: string, status: ApplicantRecord['status']) => {
-    updateApplicantStatus(id, status)
+  const applyStatusChange = async (id: string, status: ApplicantRecord['status']) => {
     setConfirmAction(null)
+    if (!(await updateApplicantStatus(id, status))) return
     if (selectedApplicant?.id === id) {
       setSelectedApplicant(prev => prev ? { ...prev, status } : null)
     }
