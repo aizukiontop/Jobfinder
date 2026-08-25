@@ -3,14 +3,7 @@ import { useApp } from '../context'
 import { BARANGAY_NAMES } from '../data/barangays'
 import MapView from '../components/MapView'
 import type { Job } from '../types'
-
-function BookmarkIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill={filled ? '#16a34a' : 'none'} stroke={filled ? '#16a34a' : '#9ca3af'} strokeWidth="2">
-      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-    </svg>
-  )
-}
+import { getExternalApplicationUrl } from '../lib/applicationLinks'
 
 function BuildingIcon() {
   return (
@@ -72,7 +65,7 @@ const EXPERIENCE_FILTERS = [
 ]
 
 export default function Search() {
-  const { allJobs, navigate, toggleSave, savedJobIds, searchQuery, setSearchQuery,
+  const { allJobs, navigate, searchQuery, setSearchQuery,
           calculateMatchScore, user, userLat, userLng, userInsideCity, locMode, setUserLocation } = useApp()
   const [localQuery, setLocalQuery] = useState(searchQuery)
   const [dateFilter, setDateFilter] = useState('Any time')
@@ -215,6 +208,9 @@ export default function Search() {
   const totalPages = Math.ceil(sorted.length / PER_PAGE)
   const paginated = sorted.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE)
   const selectedJob = sorted.find(j => j.id === selectedJobId) ?? null
+  const selectedApplicationUrl = selectedJob
+    ? getExternalApplicationUrl(selectedJob)
+    : null
 
   const toggleEmpType = (t: string) =>
     setEmpTypes(prev => (prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]))
@@ -427,10 +423,8 @@ export default function Search() {
                 key={job.id}
                 job={job}
                 selected={selectedJobId === job.id}
-                saved={savedJobIds.includes(job.id)}
                 matchScore={user ? (matchScores[job.id] ?? null) : null}
                 onSelect={() => setSelectedJobId(job.id === selectedJobId ? null : job.id)}
-                onToggleSave={() => toggleSave(job.id)}
                 onViewDetails={() => navigate('jobdetail', job.id)}
               />
             ))}
@@ -515,9 +509,6 @@ export default function Search() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between">
                       <p className="font-semibold text-sm text-gray-900 leading-tight">{selectedJob.title}</p>
-                      <button onClick={() => toggleSave(selectedJob.id)}>
-                        <BookmarkIcon filled={savedJobIds.includes(selectedJob.id)} />
-                      </button>
                     </div>
                     <p style={{ color: '#16a34a' }} className="text-xs font-medium">{selectedJob.company}</p>
                     <p className="text-xs text-gray-500">
@@ -527,13 +518,25 @@ export default function Search() {
                 </div>
                 <p className="text-xs text-gray-500 mb-3 line-clamp-2">{selectedJob.description}</p>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => navigate('apply', selectedJob.id)}
-                    style={{ background: '#16a34a', color: '#fff', borderRadius: 6 }}
-                    className="flex-1 py-2 text-sm font-semibold hover:bg-green-700"
-                  >
-                    Apply Now
-                  </button>
+                  {selectedApplicationUrl ? (
+                    <a
+                      href={selectedApplicationUrl}
+                      target={selectedApplicationUrl.startsWith('mailto:') ? undefined : '_blank'}
+                      rel="noopener noreferrer"
+                      style={{ background: '#16a34a', color: '#fff', borderRadius: 6 }}
+                      className="flex-1 py-2 text-center text-sm font-semibold hover:bg-green-700"
+                    >
+                      Apply at Source
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="flex-1 cursor-not-allowed rounded-md bg-gray-300 py-2 text-sm font-semibold text-gray-600"
+                    >
+                      Link unavailable
+                    </button>
+                  )}
                   <button
                     onClick={() => navigate('jobdetail', selectedJob.id)}
                     style={{ border: '1px solid #d1d5db', borderRadius: 6 }}
@@ -552,15 +555,13 @@ export default function Search() {
 }
 
 function SearchJobRow({
-  job, selected, saved, matchScore,
-  onSelect, onToggleSave, onViewDetails,
+  job, selected, matchScore,
+  onSelect, onViewDetails,
 }: {
   job: Job
   selected: boolean
-  saved: boolean
   matchScore: number | null
   onSelect: () => void
-  onToggleSave: () => void
   onViewDetails: () => void
 }) {
   const matchPct = matchScore != null ? Math.round(matchScore * 100) : null
@@ -606,12 +607,6 @@ function SearchJobRow({
               <span className="text-xs text-gray-400">
                 {job.daysAgo === 0 ? 'Just now' : job.daysAgo === 1 ? '1d ago' : `${job.daysAgo}d ago`}
               </span>
-              <button
-                onClick={e => { e.stopPropagation(); onToggleSave() }}
-                className="hover:scale-110 transition-transform"
-              >
-                <BookmarkIcon filled={saved} />
-              </button>
             </div>
           </div>
           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 items-center">

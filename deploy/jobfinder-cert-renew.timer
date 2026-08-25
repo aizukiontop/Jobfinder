@@ -1,0 +1,12 @@
+[Unit]
+Description=Weekly randomized renewal check for JobFinder TLS
+
+[Timer]
+OnCalendar=Sun *-*-* 02:17:00 UTC
+RandomizedDelaySec=6h
+AccuracySec=15min
+Persistent=true
+Unit=jobfinder-cert-renew.service
+
+[Install]
+WantedBy=timers.target

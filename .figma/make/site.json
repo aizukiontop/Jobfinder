@@ -1,5 +1,6 @@
 {
-  "description": "This web application streamlines the process of reading and understanding instructions, providing users with clear, concise guidance tailored to their needs.",
+  "title": "JobFinder",
+  "description": "Browse verified public job listings in Angeles City through the temporary JobFinder preview.",
   "robots": {
     "index": false
   },

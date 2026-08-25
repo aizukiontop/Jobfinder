@@ -3,6 +3,7 @@ dist/
 build/
 .cache/
 .env*
+!.env.example
 .vite/
 vite.config.*.timestamp-*
 *.tsbuildinfo
@@ -11,3 +12,9 @@ logs/
 *.log
 .claude-replay.*
 .tmp-*
+server/data/
+server/uploads/
+server/.env
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

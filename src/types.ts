@@ -74,6 +74,10 @@ export interface Job {
   applicationUrl?: string
   sourceUrl?: string
 
+  /** The API decides whether JobFinder or the verified source accepts applications. */
+  applicationMode?: 'internal' | 'external'
+  status?: 'draft' | 'active' | 'closed'
+
   /** Clearly distinguishes real postings from sample/demo data. */
   dataSource: DataSource
 

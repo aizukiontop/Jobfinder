@@ -333,18 +333,18 @@ export default function Home() {
                   }}
                 >
                   <h3 className="font-bold text-white text-base mb-2">
-                    Get discovered
+                    Browse verified listings
                   </h3>
 
                   <p
                     className="text-xs mb-4"
                     style={{ color: 'rgba(255,255,255,0.7)' }}
                   >
-                    Create a profile and let employers find you first.
+                    Review current opportunities and apply through each verified source.
                   </p>
 
                   <button
-                    onClick={() => navigate('profile')}
+                    onClick={() => navigate('search')}
                     style={{
                       background: '#16a34a',
                       color: '#fff',
@@ -352,7 +352,7 @@ export default function Home() {
                     }}
                     className="w-full py-2 text-sm font-semibold hover:bg-green-700 transition-colors"
                   >
-                    Create Profile
+                    Search Jobs
                   </button>
                 </div>
               </div>
