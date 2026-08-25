@@ -26,6 +26,8 @@ server/.env
 .codex-tmp/
 .aider*
 .cursor/
+CLAUDE.md
+AGENTS.md
 
 # Server deployment scripts reference private host paths - keep local only
 deploy/
