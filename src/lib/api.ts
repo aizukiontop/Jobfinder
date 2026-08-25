@@ -259,7 +259,8 @@ export interface ApplicationInput {
   email: string
   phone?: string
   coverLetter?: string
-  resume: File
+  resume?: File | null
+  useProfileResume?: boolean
 }
 
 export async function applyToJob(
@@ -272,7 +273,8 @@ export async function applyToJob(
   form.append('email', input.email)
   form.append('phone', input.phone ?? '')
   form.append('coverLetter', input.coverLetter ?? '')
-  form.append('resume', input.resume)
+  form.append('useProfileResume', input.useProfileResume ? 'true' : 'false')
+  if (input.resume) form.append('resume', input.resume)
 
   const body = await request<{ application: Application }>(
     `/jobs/${encodeURIComponent(jobId)}/applications`,

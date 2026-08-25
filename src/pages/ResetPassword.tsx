@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useApp } from '../context'
 import { ApiRequestError, resetPassword } from '../lib/api'
 import PasswordField from '../components/PasswordField'
+import PasswordRequirements from '../components/PasswordRequirements'
+import { isAcceptablePassword, passwordRules } from '../lib/passwordPolicy'
 import jobfinderLogo from '../assets/jobfinder-logo.png'
 
 export default function ResetPassword() {
@@ -15,8 +17,9 @@ export default function ResetPassword() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.')
+    if (!isAcceptablePassword(password)) {
+      const missing = passwordRules(password).filter(r => !r.met)
+      setError(`Password needs: ${missing.map(r => r.label.toLowerCase()).join(', ')}.`)
       return
     }
     if (password !== confirmPassword) {
@@ -88,6 +91,7 @@ export default function ResetPassword() {
                   required
                   style={{ border: '1px solid #d1d5db', borderRadius: 6 }}
                 />
+                <PasswordRequirements password={password} />
               </div>
 
               <div>

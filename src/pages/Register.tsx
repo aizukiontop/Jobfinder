@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useApp } from '../context'
 import PasswordField from '../components/PasswordField'
+import PasswordRequirements from '../components/PasswordRequirements'
+import { isAcceptablePassword, passwordRules } from '../lib/passwordPolicy'
 import { ApiRequestError } from '../lib/api'
 import type { UserRole } from '../types'
 
@@ -55,11 +57,9 @@ export default function Register() {
 
     if (!form.password) {
       e.password = 'Password is required.'
-    } else if (
-      form.password.length < 6
-    ) {
-      e.password =
-        'Password must be at least 6 characters.'
+    } else if (!isAcceptablePassword(form.password)) {
+      const missing = passwordRules(form.password).filter(r => !r.met)
+      e.password = `Password needs: ${missing.map(r => r.label.toLowerCase()).join(', ')}.`
     }
 
     if (!form.confirmPassword) {
@@ -434,6 +434,8 @@ export default function Register() {
                 {errors.password}
               </p>
             )}
+
+            <PasswordRequirements password={form.password} />
           </div>
 
           <div>

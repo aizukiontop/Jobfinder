@@ -35,6 +35,8 @@ export default function ApplicationForm() {
     coverLetter: '',
   })
   const [resumeFile, setResumeFile] = useState<File | null>(null)
+  const savedResume = user?.resumeName ?? ''
+  const [useSaved, setUseSaved] = useState(Boolean(user?.resumeName))
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
@@ -74,7 +76,7 @@ export default function ApplicationForm() {
     if (!form.lastName.trim()) e.lastName = 'Last name is required.'
     if (!form.email.trim()) e.email = 'Email address is required.'
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'Enter a valid email address.'
-    if (!resumeFile) e.resume = 'Resume/CV is required.'
+    if (!useSaved && !resumeFile) e.resume = 'Resume/CV is required.'
     return e
   }
 
@@ -85,7 +87,7 @@ export default function ApplicationForm() {
       setErrors(errs)
       return
     }
-    if (!resumeFile) return
+    if (!useSaved && !resumeFile) return
 
     setSubmitting(true)
     try {
@@ -95,7 +97,8 @@ export default function ApplicationForm() {
         email: form.email,
         phone: form.phone,
         coverLetter: form.coverLetter,
-        resume: resumeFile,
+        resume: useSaved ? null : resumeFile,
+        useProfileResume: useSaved,
       })
       setSubmitted(true)
     } catch (err) {
@@ -291,6 +294,32 @@ export default function ApplicationForm() {
               Resume/CV <span className="text-red-500">*</span>
             </h3>
 
+            {savedResume && (
+              <div
+                style={{ border: '1px solid #d1d5db', borderRadius: 8, background: useSaved ? '#f0fdf4' : '#fff' }}
+                className="flex items-center gap-3 p-4 mb-3"
+              >
+                <input
+                  id="use-saved-resume"
+                  type="checkbox"
+                  checked={useSaved}
+                  onChange={e => {
+                    setUseSaved(e.target.checked)
+                    if (e.target.checked) setResumeFile(null)
+                    setErrors(prev => ({ ...prev, resume: '' }))
+                  }}
+                  className="w-4 h-4"
+                />
+                <label htmlFor="use-saved-resume" className="flex-1 cursor-pointer">
+                  <span className="text-sm font-medium text-gray-800">Use the resume on my profile</span>
+                  <span className="block text-xs text-gray-500">{savedResume}</span>
+                </label>
+              </div>
+            )}
+
+            {!useSaved && (
+              <>
+
             {resumeFile ? (
               <div
                 style={{ border: '1px solid #d1d5db', borderRadius: 8 }}
@@ -334,6 +363,8 @@ export default function ApplicationForm() {
                   className="hidden"
                 />
               </div>
+            )}
+              </>
             )}
             {errors.resume && <p className="text-xs text-red-500 mt-1">{errors.resume}</p>}
           </div>

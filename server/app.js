@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
-import { createReadStream, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
+import { copyFileSync, createReadStream, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import express from 'express'
 import rateLimit from 'express-rate-limit'
@@ -9,6 +9,7 @@ import multer from 'multer'
 import { z } from 'zod'
 import { getJobSkills, getUserSkills, initializeDatabase, normalizeSkill, nowIso, openDatabase, replaceJobSkills, replaceUserSkills } from './db.js'
 import { createMailer, passwordResetEmail } from './mailer.js'
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, passwordProblems } from './password.js'
 import { ApiError, asyncRoute, authenticate, clearSessionCookie, createSession, hashPassword, originGuard, requireRole, sha256, verifyPassword, writeSessionCookie } from './security.js'
 
 const APPLICATION_STATUSES = ['applied', 'reviewing', 'shortlisted', 'interview', 'hired', 'rejected']
@@ -22,18 +23,27 @@ const EMPLOYER_FIELDS = new Set([
   'contactEmail', 'contactPhone', 'website', 'companySize',
 ])
 
+const strongPassword = z.string()
+  .min(PASSWORD_MIN_LENGTH)
+  .max(PASSWORD_MAX_LENGTH)
+  .superRefine((value, ctx) => {
+    for (const problem of passwordProblems(value)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Password needs: ${problem.toLowerCase()}` })
+    }
+  })
+
 const registerSchema = z.discriminatedUnion('role', [
   z.object({
     role: z.literal('job-seeker'),
     email: z.string().trim().email().max(254),
-    password: z.string().min(8).max(128),
+    password: strongPassword,
     firstName: z.string().trim().min(1).max(80),
     lastName: z.string().trim().min(1).max(80),
   }).strict(),
   z.object({
     role: z.literal('employer'),
     email: z.string().trim().email().max(254),
-    password: z.string().min(8).max(128),
+    password: strongPassword,
     companyName: z.string().trim().min(1).max(160),
     industry: z.string().trim().min(1).max(120),
     contactName: z.string().trim().min(1).max(160),
@@ -46,7 +56,7 @@ const forgotPasswordSchema = z.object({
 
 const resetPasswordSchema = z.object({
   token: z.string().trim().min(20).max(200),
-  password: z.string().min(8).max(128),
+  password: strongPassword,
 }).strict()
 
 const loginSchema = z.object({
@@ -61,6 +71,7 @@ const applicationSchema = z.object({
   email: z.string().trim().email().max(254),
   phone: z.string().trim().max(40).optional().default(''),
   coverLetter: z.string().trim().max(10_000).optional().default(''),
+  useProfileResume: z.enum(['true', 'false']).optional().default('false'),
 })
 
 const jobInputSchema = z.object({
@@ -832,7 +843,38 @@ export function createApp(config) {
       if (db.prepare('SELECT 1 FROM applications WHERE job_id=? AND applicant_user_id=?').get(job.id, req.auth.id)) {
         throw new ApiError(409, 'DUPLICATE_APPLICATION', 'You have already applied for this job.')
       }
-      accepted = await acceptResume(req.file, req.auth.id, 'application-resume')
+      if (input.useProfileResume === 'true' && !req.file) {
+        const saved = db.prepare(`
+          SELECT f.storage_key, f.original_name, f.mime_type, f.size_bytes, f.sha256
+          FROM job_seeker_profiles p
+          JOIN stored_files f ON f.id = p.resume_file_id
+          WHERE p.user_id = ? AND f.kind = 'profile-resume'
+        `).get(req.auth.id)
+
+        if (!saved) {
+          throw new ApiError(400, 'NO_PROFILE_RESUME', 'Upload a resume to your profile before using it to apply.')
+        }
+
+        const copyId = randomUUID()
+        const storageKey = `${copyId}${path.extname(saved.storage_key)}`
+        const finalPath = path.join(resumeDir, storageKey)
+        copyFileSync(path.join(resumeDir, saved.storage_key), finalPath)
+
+        accepted = {
+          id: copyId,
+          ownerUserId: req.auth.id,
+          kind: 'application-resume',
+          storageKey,
+          finalPath,
+          originalName: saved.original_name,
+          mimeType: saved.mime_type,
+          sizeBytes: saved.size_bytes,
+          sha256: saved.sha256,
+          createdAt: nowIso(),
+        }
+      } else {
+        accepted = await acceptResume(req.file, req.auth.id, 'application-resume')
+      }
       const applicantSkills = getUserSkills(db, req.auth.id)
       const requiredSkills = getJobSkills(db, job.id, 'required')
       const score = scoreSkills(requiredSkills, applicantSkills)

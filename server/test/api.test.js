@@ -123,12 +123,12 @@ test('password hashing has a bounded single-worker queue', async () => {
 test('registration hashes passwords, enforces origin, and prevents duplicate emails across roles', async () => {
   const blocked = await request('/api/auth/register', {
     method: 'POST', origin: 'https://evil.example',
-    body: { role: 'job-seeker', email: 'blocked@example.com', password: 'password123', firstName: 'Bad', lastName: 'Origin' },
+    body: { role: 'job-seeker', email: 'blocked@example.com', password: 'TestPass2026', firstName: 'Bad', lastName: 'Origin' },
   })
   assert.equal(blocked.status, 403)
 
   const seeker = await register({
-    role: 'job-seeker', email: 'ana@example.com', password: 'password123', firstName: 'Ana', lastName: 'Cruz',
+    role: 'job-seeker', email: 'ana@example.com', password: 'TestPass2026', firstName: 'Ana', lastName: 'Cruz',
   })
   assert.equal(seeker.response.status, 201)
   assert.equal(seeker.data.account.role, 'job-seeker')
@@ -138,7 +138,7 @@ test('registration hashes passwords, enforces origin, and prevents duplicate ema
 
   const duplicate = await request('/api/auth/register', {
     method: 'POST', body: {
-      role: 'employer', email: 'ANA@EXAMPLE.COM', password: 'password123',
+      role: 'employer', email: 'ANA@EXAMPLE.COM', password: 'TestPass2026',
       companyName: 'Duplicate Corp', industry: 'Retail', contactName: 'HR',
     },
   })
@@ -147,7 +147,7 @@ test('registration hashes passwords, enforces origin, and prevents duplicate ema
 })
 
 test('saved jobs are user-scoped and verified listings accept one application each', async () => {
-  const login = await request('/api/auth/login', { method: 'POST', body: { email: 'ana@example.com', password: 'password123' } })
+  const login = await request('/api/auth/login', { method: 'POST', body: { email: 'ana@example.com', password: 'TestPass2026' } })
   const cookie = sessionCookie(login)
 
   assert.equal((await request('/api/me/saved-jobs/rv02', { method: 'PUT', cookie })).status, 204)
@@ -185,14 +185,14 @@ test('saved jobs are user-scoped and verified listings accept one application ea
 
 test('employer ownership and the complete internal application lifecycle are enforced', async () => {
   const employer = await register({
-    role: 'employer', email: 'hr@example.com', password: 'password123',
+    role: 'employer', email: 'hr@example.com', password: 'TestPass2026',
     companyName: 'Angeles Test Corp', industry: 'Retail & Trade', contactName: 'HR Manager',
   })
   const otherEmployer = await register({
-    role: 'employer', email: 'other@example.com', password: 'password123',
+    role: 'employer', email: 'other@example.com', password: 'TestPass2026',
     companyName: 'Other Corp', industry: 'Finance', contactName: 'Other HR',
   })
-  const seekerLogin = await request('/api/auth/login', { method: 'POST', body: { email: 'ana@example.com', password: 'password123' } })
+  const seekerLogin = await request('/api/auth/login', { method: 'POST', body: { email: 'ana@example.com', password: 'TestPass2026' } })
   const seekerCookie = sessionCookie(seekerLogin)
   await request('/api/me/profile', {
     method: 'PATCH', cookie: seekerCookie,
@@ -264,7 +264,7 @@ test('password reset issues single-use tokens and does not reveal account existe
   const email = 'reset-flow@example.com'
   const created = await request('/api/auth/register', {
     method: 'POST',
-    body: { role: 'job-seeker', email, password: 'password123', firstName: 'Reset', lastName: 'Flow' },
+    body: { role: 'job-seeker', email, password: 'TestPass2026', firstName: 'Reset', lastName: 'Flow' },
   })
   assert.equal(created.status, 201)
 
@@ -288,17 +288,17 @@ test('password reset issues single-use tokens and does not reveal account existe
   `).run(randomUUID(), userId, createHash('sha256').update(expired).digest('hex'),
     new Date().toISOString(), new Date(Date.now() - 1_000).toISOString())
 
-  const expiredAttempt = await request('/api/auth/reset-password', { method: 'POST', body: { token: expired, password: 'brandnew123' } })
+  const expiredAttempt = await request('/api/auth/reset-password', { method: 'POST', body: { token: expired, password: 'BrandNew2026' } })
   assert.equal(expiredAttempt.status, 400, 'expired tokens must be rejected')
 
-  const reset = await request('/api/auth/reset-password', { method: 'POST', body: { token, password: 'brandnew123' } })
+  const reset = await request('/api/auth/reset-password', { method: 'POST', body: { token, password: 'BrandNew2026' } })
   assert.equal(reset.status, 200)
 
-  const oldLogin = await request('/api/auth/login', { method: 'POST', body: { email, password: 'password123' } })
-  const newLogin = await request('/api/auth/login', { method: 'POST', body: { email, password: 'brandnew123' } })
+  const oldLogin = await request('/api/auth/login', { method: 'POST', body: { email, password: 'TestPass2026' } })
+  const newLogin = await request('/api/auth/login', { method: 'POST', body: { email, password: 'BrandNew2026' } })
   assert.equal(oldLogin.status, 401, 'the previous password must stop working')
   assert.equal(newLogin.status, 200)
 
-  const replay = await request('/api/auth/reset-password', { method: 'POST', body: { token, password: 'thirdpass123' } })
+  const replay = await request('/api/auth/reset-password', { method: 'POST', body: { token, password: 'ThirdPass2026' } })
   assert.equal(replay.status, 400, 'tokens must be single use')
 })
