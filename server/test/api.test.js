@@ -97,7 +97,7 @@ test('health and verified seed are correct and idempotent', async () => {
   assert.equal(payload.total, VERIFIED_JOB_COUNT)
   assert.equal(payload.items.length, VERIFIED_JOB_COUNT)
   assert.ok(payload.items.every((job) => job.dataSource === 'external-verified'))
-  assert.ok(payload.items.every((job) => job.applicationMode === 'external'))
+  assert.ok(payload.items.every((job) => job.applicationMode === 'internal'))
   assert.equal(api.db.prepare("SELECT count(*) AS count FROM jobs WHERE data_source='external-verified'").get().count, VERIFIED_JOB_COUNT)
 })
 
@@ -146,7 +146,7 @@ test('registration hashes passwords, enforces origin, and prevents duplicate ema
   assert.equal((await json(duplicate)).error.code, 'EMAIL_IN_USE')
 })
 
-test('saved jobs are user-scoped and external applications are rejected honestly', async () => {
+test('saved jobs are user-scoped and verified listings accept one application each', async () => {
   const login = await request('/api/auth/login', { method: 'POST', body: { email: 'ana@example.com', password: 'password123' } })
   const cookie = sessionCookie(login)
 
@@ -170,11 +170,17 @@ test('saved jobs are user-scoped and external applications are rejected honestly
   assert.equal(existsSync(path.join(root, 'uploads', 'resumes', firstRow.storage_key)), false)
   assert.equal(existsSync(path.join(root, 'uploads', 'resumes', profileFiles[0].storage_key)), true)
 
-  const external = await request('/api/jobs/rv02/applications', { method: 'POST', cookie, form: resumeForm() })
-  const body = await json(external)
-  assert.equal(external.status, 409)
-  assert.equal(body.error.code, 'EXTERNAL_APPLICATION_ONLY')
-  assert.equal(api.db.prepare('SELECT count(*) AS count FROM applications').get().count, 0)
+  const verified = await request('/api/jobs/rv02/applications', { method: 'POST', cookie, form: resumeForm() })
+  assert.equal(verified.status, 201, 'verified listings now accept internal applications')
+  assert.equal(api.db.prepare('SELECT count(*) AS count FROM applications').get().count, 1)
+
+  const repeat = await request('/api/jobs/rv02/applications', { method: 'POST', cookie, form: resumeForm() })
+  const repeatBody = await json(repeat)
+  assert.equal(repeat.status, 409, 'one application per job per applicant')
+  assert.equal(repeatBody.error.code, 'DUPLICATE_APPLICATION')
+
+  const ownerless = api.db.prepare("SELECT owner_user_id FROM jobs WHERE id='rv02'").get()
+  assert.equal(ownerless.owner_user_id, null, 'verified listings still have no employer owner')
 })
 
 test('employer ownership and the complete internal application lifecycle are enforced', async () => {
