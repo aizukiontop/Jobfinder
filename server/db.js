@@ -130,7 +130,7 @@ export function seedVerifiedJobs(db, datasetPath = verifiedJobsPath) {
       @experienceLevel, @category, @description, @responsibilities,
       @requirements, @benefits, @openings, @lat, @lng,
       @coordinateSource, @datePosted, @expirationDate, @applicationUrl,
-      @sourceUrl, 'external-verified', 'external', 'active', @seedRevision,
+      @sourceUrl, 'external-verified', 'internal', 'active', @seedRevision,
       @createdAt, @updatedAt
     )
     ON CONFLICT(id) DO UPDATE SET
@@ -149,7 +149,7 @@ export function seedVerifiedJobs(db, datasetPath = verifiedJobsPath) {
       coordinate_source=excluded.coordinate_source, date_posted=excluded.date_posted,
       application_deadline=excluded.application_deadline,
       application_url=excluded.application_url, source_url=excluded.source_url,
-      application_mode='external', status='active', seed_revision=excluded.seed_revision,
+      application_mode='internal', status='active', seed_revision=excluded.seed_revision,
       updated_at=excluded.updated_at
     WHERE jobs.data_source='external-verified'
   `)

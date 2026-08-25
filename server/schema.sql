@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   updated_at TEXT NOT NULL,
   CHECK(salary_min IS NULL OR salary_max IS NULL OR salary_min <= salary_max),
   CHECK(data_source <> 'employer-created' OR owner_user_id IS NOT NULL),
-  CHECK(application_mode <> 'internal' OR owner_user_id IS NOT NULL)
+  CHECK(application_mode <> 'internal' OR owner_user_id IS NOT NULL OR data_source = 'external-verified')
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS ix_jobs_public ON jobs(status, date_posted DESC);

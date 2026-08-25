@@ -57,7 +57,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://www.encorefinancials.com/contact-us.php",
     "applicationUrl": "https://www.encorefinancials.com/contact-us.php",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv03",
@@ -115,7 +116,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://www.encorefinancials.com/contact-us.php",
     "applicationUrl": "https://www.encorefinancials.com/contact-us.php",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv04",
@@ -171,7 +173,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://www.encorefinancials.com/contact-us.php",
     "applicationUrl": "https://www.encorefinancials.com/contact-us.php",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv05",
@@ -225,7 +228,8 @@
     "datePosted": "2026-07-16",
     "sourceUrl": "https://www.kfc.com.ph/en/store-locator",
     "applicationUrl": "https://www.kfc.com.ph/en/store-locator",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv09",
@@ -244,7 +248,12 @@
     "experienceLevel": "Entry level",
     "category": "Customer Service",
     "description": "Operate point-of-sale systems and assist customers at the food service section of S&R Membership Shopping Angeles.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Operate POS systems to process customer transactions accurately",
+      "Assist customers at the food service section",
+      "Maintain cleanliness and order in the food service area",
+      "Follow store cash handling and end-of-shift procedures"
+    ],
     "requiredSkills": [
       "POS Operation",
       "Customer Service"
@@ -267,7 +276,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://meinhardt.ph/projects/sr-angeles-pampanga/",
     "applicationUrl": "mailto:pspcrecruitment@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv10",
@@ -286,7 +296,12 @@
     "experienceLevel": "Entry level",
     "category": "Customer Service",
     "description": "Serve customers and maintain food service standards at S&R Membership Shopping Angeles.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Serve customers promptly and courteously at the food service counter",
+      "Maintain food service standards and hygiene compliance",
+      "Replenish food items and ensure proper display",
+      "Assist in food preparation as required"
+    ],
     "requiredSkills": [
       "Customer Service"
     ],
@@ -308,7 +323,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://meinhardt.ph/projects/sr-angeles-pampanga/",
     "applicationUrl": "mailto:pspcrecruitment@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv11",
@@ -327,7 +343,12 @@
     "experienceLevel": "Entry level",
     "category": "Administrative",
     "description": "Receive, organize, and replenish store inventory on shelves at S&R Membership Shopping Angeles.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Receive, unpack, and organize incoming merchandise",
+      "Replenish shelves and maintain proper stock rotation (FIFO)",
+      "Keep storage areas clean and orderly",
+      "Report damaged or missing items to the supervisor"
+    ],
     "requiredSkills": [
       "Inventory Management"
     ],
@@ -348,7 +369,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://meinhardt.ph/projects/sr-angeles-pampanga/",
     "applicationUrl": "mailto:pspcrecruitment@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv12",
@@ -367,7 +389,12 @@
     "experienceLevel": "Entry level",
     "category": "Customer Service",
     "description": "Process customer payments and operate electronic cash registers at S&R Membership Shopping Angeles.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Process customer payments via cash, card, and electronic terminals",
+      "Operate electronic cash registers and barcode scanners",
+      "Issue official receipts and manage cash drawer",
+      "Provide courteous and efficient service at the checkout lane"
+    ],
     "requiredSkills": [
       "POS Operation",
       "Customer Service"
@@ -391,7 +418,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://meinhardt.ph/projects/sr-angeles-pampanga/",
     "applicationUrl": "mailto:pspcrecruitment@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv13",
@@ -410,7 +438,12 @@
     "experienceLevel": "Entry level",
     "category": "Administrative",
     "description": "Receive, inspect, and record incoming merchandise deliveries at S&R Membership Shopping Angeles.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Receive and inspect incoming merchandise deliveries",
+      "Record and verify received items against purchase orders",
+      "Sort, label, and organize received goods in the warehouse",
+      "Report discrepancies or damaged items to management"
+    ],
     "requiredSkills": [
       "Inventory Management"
     ],
@@ -431,7 +464,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://meinhardt.ph/projects/sr-angeles-pampanga/",
     "applicationUrl": "mailto:pspcrecruitment@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv14",
@@ -450,7 +484,12 @@
     "experienceLevel": "Entry level",
     "category": "Customer Service",
     "description": "Handle ready-to-eat food products including preparation, display, and customer service at S&R Membership Shopping Angeles.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Handle ready-to-eat food products following safe food handling practices",
+      "Arrange and display RTE products attractively",
+      "Assist customers with product inquiries at the RTE section",
+      "Monitor product freshness and comply with food safety standards"
+    ],
     "requiredSkills": [
       "Customer Service"
     ],
@@ -471,7 +510,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://meinhardt.ph/projects/sr-angeles-pampanga/",
     "applicationUrl": "mailto:pspcrecruitment@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv15",
@@ -490,7 +530,12 @@
     "experienceLevel": "Entry level",
     "category": "Customer Service",
     "description": "Operate and maintain rotisserie equipment; handle poultry products following safe food handling practices at S&R Membership Shopping Angeles.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Operate and maintain rotisserie equipment safely",
+      "Handle and prepare poultry products following safe food handling practices",
+      "Ensure equipment is clean and in proper working condition",
+      "Assist customers with rotisserie product inquiries"
+    ],
     "requiredSkills": [
       "Customer Service"
     ],
@@ -512,7 +557,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://meinhardt.ph/projects/sr-angeles-pampanga/",
     "applicationUrl": "mailto:pspcrecruitment@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv16",
@@ -531,7 +577,12 @@
     "experienceLevel": "Entry level",
     "category": "Customer Service",
     "description": "Pack customer purchases accurately and courteously at the front end of S&R Membership Shopping Angeles.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Pack customer purchases accurately and carefully at checkout",
+      "Assist customers courteously and efficiently at the bagging area",
+      "Ensure fragile or perishable items are packed appropriately",
+      "Maintain cleanliness at the packing station"
+    ],
     "requiredSkills": [
       "Customer Service"
     ],
@@ -552,7 +603,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://meinhardt.ph/projects/sr-angeles-pampanga/",
     "applicationUrl": "mailto:pspcrecruitment@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv17",
@@ -571,7 +623,12 @@
     "experienceLevel": "Entry level",
     "category": "Customer Service",
     "description": "Process customer transactions, receive payments, and issue receipts at Dalisay Pandan Angeles grocery store.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Process customer transactions and receive payments at the cashier counter",
+      "Issue receipts and maintain accurate cash drawer records",
+      "Provide courteous and efficient service to customers",
+      "Perform end-of-shift cash reconciliation"
+    ],
     "requiredSkills": [
       "POS Operation",
       "Communication",
@@ -598,7 +655,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://dalisay-grocery.com/",
     "applicationUrl": "mailto:dshtihrrecruitment@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv18",
@@ -617,7 +675,12 @@
     "experienceLevel": "Entry level",
     "category": "Administrative",
     "description": "Arrange and organize products on shelves, restock items, and check expiration dates at Dalisay Pandan Angeles.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Arrange and organize products on shelves following planograms",
+      "Restock items and ensure proper FIFO rotation",
+      "Check expiration dates and remove expired products",
+      "Maintain clean and presentable shelf displays"
+    ],
     "requiredSkills": [
       "Inventory Management"
     ],
@@ -639,7 +702,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://dalisay-grocery.com/",
     "applicationUrl": "mailto:dshtihrrecruitment@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv19",
@@ -658,7 +722,12 @@
     "experienceLevel": "Entry level",
     "category": "Administrative",
     "description": "Verify the accuracy of items purchased by customers before payment or exit at Dalisay Pandan Angeles.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Verify the accuracy and completeness of items purchased by customers",
+      "Compare receipts against items before customer exit",
+      "Flag discrepancies and coordinate with cashiers to resolve them",
+      "Maintain an accurate and honest checking process"
+    ],
     "requiredSkills": [
       "Problem Solving"
     ],
@@ -680,7 +749,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://dalisay-grocery.com/",
     "applicationUrl": "mailto:dshtihrrecruitment@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv20",
@@ -699,7 +769,12 @@
     "experienceLevel": "Entry level",
     "category": "Administrative",
     "description": "Input and update sales, inventory, and delivery data in the store system at Dalisay Pandan Angeles.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Input and update sales, inventory, and delivery data in the store system",
+      "Maintain accurate digital records of transactions and stock movements",
+      "Generate reports using Microsoft Excel and Word as required",
+      "Ensure data accuracy and timely submission of records"
+    ],
     "requiredSkills": [
       "Data Entry",
       "Microsoft Excel",
@@ -726,7 +801,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://dalisay-grocery.com/",
     "applicationUrl": "mailto:dshtihrrecruitment@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv21",
@@ -745,7 +821,12 @@
     "experienceLevel": "Entry level",
     "category": "Accounting",
     "description": "Review and validate sales transactions for accuracy at Dalisay Pandan Angeles.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Review and validate sales transactions for accuracy and completeness",
+      "Identify and flag errors or discrepancies in transaction records",
+      "Coordinate with cashiers and supervisors to resolve transaction issues",
+      "Maintain organized and accurate transaction documentation"
+    ],
     "requiredSkills": [
       "Problem Solving",
       "Communication"
@@ -772,7 +853,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://dalisay-grocery.com/",
     "applicationUrl": "mailto:dshtihrrecruitment@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv22",
@@ -791,7 +873,13 @@
     "experienceLevel": "Associate",
     "category": "Administrative",
     "description": "Oversee warehouse operations at Baker's Percent bakery facility in Angeles Livelihood Complex, ensuring FIFO/FEFO compliance, stock management, and team supervision.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Oversee daily warehouse operations ensuring FIFO/FEFO compliance",
+      "Manage inventory records and coordinate stock movements",
+      "Supervise warehouse team and assign daily tasks",
+      "Ensure food safety and safety regulations are followed",
+      "Coordinate with production and logistics teams"
+    ],
     "requiredSkills": [
       "Inventory Management",
       "Logistics",
@@ -825,7 +913,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://philjobnet.gov.ph/job-vacancies/company/bakers-percent-bakery-corporation-402384",
     "applicationUrl": "mailto:bpercent_angeles@yahoo.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv23",
@@ -844,7 +933,12 @@
     "experienceLevel": "Entry level",
     "category": "Administrative",
     "description": "Assist senior mechanics in maintaining and repairing vehicles and equipment at Baker's Percent bakery operations.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Assist senior mechanics in maintenance and repair of vehicles and equipment",
+      "Perform routine checks and preventive maintenance tasks",
+      "Diagnose mechanical issues under supervision",
+      "Maintain cleanliness and order in the workshop area"
+    ],
     "requiredSkills": [
       "Troubleshooting"
     ],
@@ -871,7 +965,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://philjobnet.gov.ph/job-vacancies/company/bakers-percent-bakery-corporation-402384",
     "applicationUrl": "mailto:bpercent_angeles@yahoo.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv24",
@@ -890,7 +985,13 @@
     "experienceLevel": "Associate",
     "category": "Administrative",
     "description": "Maintain and troubleshoot mechanical and electrical systems including production machinery at Baker's Percent bakery in Angeles City.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Maintain and troubleshoot mechanical and electrical systems and production machinery",
+      "Perform preventive and corrective maintenance following PM schedules",
+      "Handle hydraulic, pneumatic, and welding tasks as required",
+      "Ensure GMP and HACCP compliance in maintenance activities",
+      "Manage spare parts inventory and maintenance records"
+    ],
     "requiredSkills": [
       "Troubleshooting",
       "Inventory Management",
@@ -922,7 +1023,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://philjobnet.gov.ph/job-vacancies/company/bakers-percent-bakery-corporation-402384",
     "applicationUrl": "mailto:bpercent_angeles@yahoo.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv25",
@@ -941,7 +1043,13 @@
     "experienceLevel": "Associate",
     "category": "Administrative",
     "description": "Assist in managing bakery production operations including planning, inventory, and GMP/HACCP compliance at Baker's Percent Angeles.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Assist in planning and managing daily bakery production operations",
+      "Monitor production schedules and ensure output targets are met",
+      "Enforce GMP and HACCP compliance on the production floor",
+      "Coordinate inventory management and minimize waste",
+      "Prepare production reports and assist the Production Manager"
+    ],
     "requiredSkills": [
       "Inventory Management",
       "Scheduling"
@@ -966,7 +1074,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://philjobnet.gov.ph/job-vacancies/company/bakers-percent-bakery-corporation-402384",
     "applicationUrl": "mailto:bpercent_angeles@yahoo.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv26",
@@ -985,7 +1094,13 @@
     "experienceLevel": "Associate",
     "category": "Administrative",
     "description": "Oversee packaging operations and team management at Baker's Percent bakery in Angeles City.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Oversee packaging operations and team performance",
+      "Enforce GMP and HACCP standards in packaging area",
+      "Monitor packaging output and quality consistency",
+      "Coordinate with production and warehouse teams",
+      "Manage packaging materials inventory and reduce waste"
+    ],
     "requiredSkills": [
       "Inventory Management",
       "Scheduling"
@@ -1010,7 +1125,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://philjobnet.gov.ph/job-vacancies/company/bakers-percent-bakery-corporation-402384",
     "applicationUrl": "mailto:bpercent_angeles@yahoo.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv27",
@@ -1029,7 +1145,13 @@
     "experienceLevel": "Mid-Senior level",
     "category": "Administrative",
     "description": "Lead mechanical maintenance operations for Baker's Percent's fleet and production equipment in Angeles City.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Lead mechanical maintenance of the vehicle fleet and production equipment",
+      "Schedule and oversee preventive maintenance and inspections",
+      "Diagnose and repair diesel engines, mechanical and electrical systems",
+      "Supervise mechanics and assign maintenance tasks",
+      "Maintain accurate maintenance logs and spare parts records"
+    ],
     "requiredSkills": [
       "Troubleshooting",
       "Scheduling"
@@ -1054,7 +1176,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://philjobnet.gov.ph/job-vacancies/company/bakers-percent-bakery-corporation-402384",
     "applicationUrl": "mailto:bpercent_angeles@yahoo.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv28",
@@ -1073,7 +1196,13 @@
     "experienceLevel": "Associate",
     "category": "Administrative",
     "description": "Supervise sanitation, housekeeping, and facilities maintenance at Baker's Percent bakery, ensuring GMP, HACCP, and 5S compliance.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Supervise sanitation, housekeeping, and facilities maintenance operations",
+      "Ensure GMP, HACCP, and 5S compliance across all areas",
+      "Schedule and monitor cleaning and sanitation tasks",
+      "Lead and train the sanitation and housekeeping team",
+      "Conduct regular facility inspections and report findings"
+    ],
     "requiredSkills": [
       "Scheduling"
     ],
@@ -1095,7 +1224,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://philjobnet.gov.ph/job-vacancies/company/bakers-percent-bakery-corporation-402384",
     "applicationUrl": "mailto:bpercent_angeles@yahoo.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv29",
@@ -1114,7 +1244,12 @@
     "experienceLevel": "Entry level",
     "category": "Customer Service",
     "description": "Prepare and serve coffee and beverages with a passion for quality and customer service at Edna's Cakeland, Angeles City.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Prepare and serve coffee and beverages according to quality standards",
+      "Operate coffee equipment and maintain its cleanliness",
+      "Assist customers with beverage recommendations and orders",
+      "Maintain cleanliness and presentation of the coffee service area"
+    ],
     "requiredSkills": [
       "Customer Service"
     ],
@@ -1137,7 +1272,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://ednascakeland.com/pages/our-stores",
     "applicationUrl": "mailto:jobs.amggroup@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv30",
@@ -1156,7 +1292,12 @@
     "experienceLevel": "Entry level",
     "category": "Sales & Marketing",
     "description": "Assist customers, maintain store presentation, and achieve sales targets at Edna's Cakeland, Angeles City.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Assist customers and provide excellent service on the shop floor",
+      "Maintain store presentation and replenish product displays",
+      "Process sales transactions and handle customer inquiries",
+      "Achieve individual and team sales targets"
+    ],
     "requiredSkills": [
       "Customer Service",
       "Sales"
@@ -1179,7 +1320,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://ednascakeland.com/pages/our-stores",
     "applicationUrl": "mailto:jobs.amggroup@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv31",
@@ -1198,7 +1340,13 @@
     "experienceLevel": "Associate",
     "category": "Sales & Marketing",
     "description": "Supervise store operations, implement sales strategies, and lead the team at Edna's Cakeland, Angeles City.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Supervise store operations and daily team activities",
+      "Implement and monitor sales strategies to achieve targets",
+      "Train, coach, and motivate store staff",
+      "Ensure compliance with store policies and standards",
+      "Prepare operational reports and coordinate with management"
+    ],
     "requiredSkills": [
       "Sales",
       "Customer Service",
@@ -1224,7 +1372,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://ednascakeland.com/pages/our-stores",
     "applicationUrl": "mailto:jobs.amggroup@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv32",
@@ -1243,7 +1392,12 @@
     "experienceLevel": "Entry level",
     "category": "Customer Service",
     "description": "Handle customer transactions accurately and responsibly at Edna's Cakeland, Angeles City.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Handle customer payment transactions accurately and efficiently",
+      "Operate the POS system and maintain the cash drawer",
+      "Issue official receipts and reconcile cash at end of shift",
+      "Provide courteous and accurate cashiering service"
+    ],
     "requiredSkills": [
       "POS Operation",
       "Customer Service",
@@ -1268,7 +1422,8 @@
     "datePosted": "2026-08-16",
     "sourceUrl": "https://ednascakeland.com/pages/our-stores",
     "applicationUrl": "mailto:jobs.amggroup@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv35",
@@ -1287,7 +1442,13 @@
     "experienceLevel": "Entry level",
     "category": "Customer Service",
     "description": "Serve customers, maintain store cleanliness, and support daily store operations at an Alfamart branch in Angeles City.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Serve customers and assist with product inquiries",
+      "Maintain store cleanliness and product displays",
+      "Support inventory replenishment and shelf organization",
+      "Operate POS systems for customer transactions",
+      "Comply with Alfamart operational standards"
+    ],
     "requiredSkills": [
       "Customer Service"
     ],
@@ -1311,7 +1472,8 @@
     "datePosted": "2026-02-25",
     "sourceUrl": "https://ph.indeed.com/q-alfamart-hiring-l-angeles-jobs.html",
     "applicationUrl": "mailto:peso.ac@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv36",
@@ -1330,7 +1492,13 @@
     "experienceLevel": "Entry level",
     "category": "Administrative",
     "description": "Supervise store operations and lead the team during assigned shifts at an Alfamart branch in Angeles City.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Supervise store team and coordinate daily operations during assigned shift",
+      "Ensure customer satisfaction and service quality standards are met",
+      "Monitor sales performance and implement operational improvements",
+      "Handle customer complaints and escalate issues as needed",
+      "Prepare shift reports and handover to the next supervisor"
+    ],
     "requiredSkills": [
       "Communication",
       "Customer Service",
@@ -1358,7 +1526,8 @@
     "datePosted": "2026-02-25",
     "sourceUrl": "https://ph.indeed.com/q-alfamart-hiring-l-angeles-jobs.html",
     "applicationUrl": "mailto:peso.ac@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv37",
@@ -1377,7 +1546,13 @@
     "experienceLevel": "Associate",
     "category": "Administrative",
     "description": "Manage daily store operations, lead the team, and drive business performance at an Alfamart branch in Angeles City.",
-    "responsibilities": [],
+    "responsibilities": [
+      "Manage overall daily store operations and team performance",
+      "Drive sales growth and ensure business targets are achieved",
+      "Lead, motivate, and develop the store team",
+      "Ensure compliance with company standards and customer service excellence",
+      "Prepare business reports and coordinate with the area manager"
+    ],
     "requiredSkills": [
       "Communication",
       "Customer Service",
@@ -1406,7 +1581,8 @@
     "datePosted": "2026-02-25",
     "sourceUrl": "https://ph.indeed.com/q-alfamart-hiring-l-angeles-jobs.html",
     "applicationUrl": "mailto:peso.ac@gmail.com",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv38",
@@ -1461,7 +1637,8 @@
     "datePosted": "2026-08-25",
     "sourceUrl": "https://bossjob.ph/job/waiter-angeles-303181",
     "applicationUrl": "https://bossjob.ph/job/waiter-angeles-303181",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv39",
@@ -1520,7 +1697,8 @@
     "datePosted": "2026-08-25",
     "sourceUrl": "https://bossjob.ph/job/accounting-specialist-angeles-450567",
     "applicationUrl": "https://bossjob.ph/job/accounting-specialist-angeles-450567",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv40",
@@ -1574,7 +1752,8 @@
     "datePosted": "2026-08-25",
     "sourceUrl": "https://bossjob.ph/job/marketing-specialist-angeles-315143",
     "applicationUrl": "https://bossjob.ph/job/marketing-specialist-angeles-315143",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv41",
@@ -1635,7 +1814,8 @@
     "datePosted": "2026-08-25",
     "sourceUrl": "https://bossjob.ph/job/secretary-angeles-320869",
     "applicationUrl": "https://bossjob.ph/job/secretary-angeles-320869",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   },
   {
     "id": "rv42",
@@ -1690,6 +1870,7 @@
     "datePosted": "2026-08-25",
     "sourceUrl": "https://bossjob.ph/job/tour-guide-angeles-471128",
     "applicationUrl": "https://bossjob.ph/job/tour-guide-angeles-471128",
-    "dataSource": "external-verified"
+    "dataSource": "external-verified",
+    "applicationMode": "internal"
   }
 ]
