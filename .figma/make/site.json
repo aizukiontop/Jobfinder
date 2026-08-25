@@ -1,6 +1,6 @@
 {
   "title": "JobFinder",
-  "description": "Browse verified public job listings in Angeles City through the temporary JobFinder preview.",
+  "description": "Find local job opportunities in Angeles City and connect with employers.",
   "robots": {
     "index": false
   },

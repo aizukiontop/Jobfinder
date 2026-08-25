@@ -11,8 +11,9 @@ export default defineConfig(({ mode }) => {
   const emitSourcemaps = mode === 'development'
 
   return {
-    // GitHub Pages deployment path
-    base: '/Jobfinder/',
+    // GitHub Pages serves the app from /Jobfinder/; the VPS serves it from the
+    // domain root, so that build sets JOBFINDER_BASE=/ instead.
+    base: process.env.JOBFINDER_BASE ?? '/Jobfinder/',
 
     build: {
       sourcemap: emitSourcemaps ? 'inline' : false,
