@@ -5,6 +5,7 @@ import { deletePhoto, deleteResume, uploadPhoto, uploadResume } from '../lib/api
 import { formatRelativeDate } from '../lib/formatDate'
 import { CATEGORIES, EMPLOYMENT_TYPES, EXPERIENCE_LEVELS } from '../data'
 import { ANGELES_CITY_BARANGAYS } from '../data/barangays'
+import { findBarangay, isWithinAngelesCity } from '../lib/geo'
 
 export default function Profile() {
   const { user, updateUser, navigate } = useApp()
@@ -27,6 +28,8 @@ export default function Profile() {
   const [visibility, setVisibility] = useState<'Public' | 'Private'>('Public')
   const [photoUrl, setPhotoUrl] = useState(user?.photo ?? '')
   const [photoError, setPhotoError] = useState('')
+  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [gpsStatus, setGpsStatus] = useState('')
   const photoInputRef = useRef<HTMLInputElement>(null)
   const resumeInputRef = useRef<HTMLInputElement>(null)
 
@@ -66,10 +69,36 @@ export default function Profile() {
   }
 
   const homeLocationUpdate = () => {
+    if (gpsCoords) {
+      return { barangay: form.barangay || null, lat: gpsCoords.lat, lng: gpsCoords.lng }
+    }
     if (!form.barangay) return { barangay: null, lat: null, lng: null }
     const match = ANGELES_CITY_BARANGAYS.find(b => b.canonical === form.barangay)
     if (!match) return { barangay: null, lat: null, lng: null }
     return { barangay: match.canonical, lat: match.lat, lng: match.lng }
+  }
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setGpsStatus('This browser cannot provide a location.')
+      return
+    }
+    setGpsStatus('Locating…')
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const { latitude, longitude } = position.coords
+        if (!isWithinAngelesCity(latitude, longitude)) {
+          setGpsStatus('That location is outside Angeles City.')
+          return
+        }
+        setGpsCoords({ lat: latitude, lng: longitude })
+        const detected = findBarangay(latitude, longitude)
+        if (detected) setForm(f => ({ ...f, barangay: detected }))
+        setGpsStatus('Using your exact location. Save to keep it.')
+      },
+      () => setGpsStatus('Location permission was denied.'),
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
   }
 
   const handleSave = async () => {
@@ -301,8 +330,23 @@ export default function Profile() {
                   <option key={b.canonical} value={b.canonical}>{b.canonical}</option>
                 ))}
               </select>
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={useCurrentLocation}
+                  style={{ border: '1px solid #d1d5db', borderRadius: 6 }}
+                  className="px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Use my current location
+                </button>
+                {gpsCoords && (
+                  <span className="text-xs text-gray-500">
+                    {gpsCoords.lat.toFixed(5)}, {gpsCoords.lng.toFixed(5)}
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-gray-500 mt-1">
-                Used to measure travel distance to each job.
+                {gpsStatus || 'Used to measure travel distance to each job.'}
               </p>
             </div>
             <div>
