@@ -26,3 +26,6 @@ server/.env
 .codex-tmp/
 .aider*
 .cursor/
+
+# Server deployment scripts reference IGST production paths - keep local only
+deploy/
