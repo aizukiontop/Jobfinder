@@ -21,7 +21,7 @@ function BuildingIcon() {
 }
 
 export default function JobDetail() {
-  const { allJobs, selectedJobId, navigate, prevPage, toggleSave, savedJobIds, hasApplied, user, calculateMatchScore, calculateSkillMatchScore, getSkillBreakdown } = useApp()
+  const { allJobs, selectedJobId, navigate, prevPage, toggleSave, savedJobIds, hasApplied, user, calculateMatchScore, calculateSkillMatchScore, getSkillBreakdown, calculateDistanceScore } = useApp()
   const job = allJobs.find(j => j.id === selectedJobId)
 
   if (!job) {
@@ -44,11 +44,13 @@ export default function JobDetail() {
   // No user location is available on this page, so G(a,j) uses the user's
   // stored barangay centroid if present, otherwise G=0 (skill-only score).
   const [matchScore, setMatchScore] = useState<number>(0)
+  const [distanceScore, setDistanceScore] = useState<number>(0)
   useEffect(() => {
     if (!user || !job) { setMatchScore(0); return }
     const lat = user.lat ?? undefined
     const lng = user.lng ?? undefined
     calculateMatchScore(job, lat, lng).then(s => setMatchScore(Math.round(s * 100)))
+    calculateDistanceScore(job, lat, lng).then(s => setDistanceScore(Math.round(s * 100)))
   }, [user, job, calculateMatchScore])
 
   return (
@@ -246,6 +248,8 @@ export default function JobDetail() {
             <SkillMatchBreakdown
               breakdown={getSkillBreakdown(job)}
               skillScore={Math.round(skillScore * 100)}
+              distanceScore={distanceScore}
+              matchScore={matchScore}
             />
           )}
         </div>
@@ -259,9 +263,13 @@ export default function JobDetail() {
 function SkillMatchBreakdown({
   breakdown,
   skillScore,
+  distanceScore,
+  matchScore,
 }: {
   breakdown: SkillMatchDetail[]
   skillScore: number
+  distanceScore: number
+  matchScore: number
 }) {
   const [open, setOpen] = useState(false)
   if (breakdown.length === 0) return null
@@ -272,6 +280,24 @@ function SkillMatchBreakdown({
 
   return (
     <div style={{ borderTop: '1px solid #f3f4f6' }} className="pt-5 pb-5">
+      <div style={{ background: '#f9fafb', borderRadius: 8 }} className="p-4 mb-4">
+        <p className="text-xs text-gray-500 mb-3">
+          Overall {matchScore}% = 70% skill compatibility + 30% travel accessibility
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-xl font-bold" style={{ color: '#0f2044' }}>{skillScore}%</p>
+            <p className="text-xs text-gray-500">Skill match</p>
+          </div>
+          <div>
+            <p className="text-xl font-bold" style={{ color: '#0f2044' }}>{distanceScore}%</p>
+            <p className="text-xs text-gray-500">
+              {distanceScore > 0 ? 'Travel accessibility' : 'Set a home barangay in your profile'}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Header — always visible, click to toggle */}
       <button
         onClick={() => setOpen(v => !v)}
