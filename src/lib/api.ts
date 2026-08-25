@@ -131,6 +131,14 @@ export async function fetchSession(signal?: AbortSignal): Promise<SessionRespons
   }
 }
 
+export function requestPasswordReset(email: string): Promise<void> {
+  return request<void>('/auth/forgot-password', { method: 'POST', body: { email } })
+}
+
+export function resetPassword(token: string, password: string): Promise<void> {
+  return request<void>('/auth/reset-password', { method: 'POST', body: { token, password } })
+}
+
 export function logout(): Promise<void> {
   return request<void>('/auth/logout', { method: 'POST' })
 }

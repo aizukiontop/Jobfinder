@@ -5,6 +5,8 @@ export type Page =
   | 'applications'
   | 'signin'
   | 'register'
+  | 'forgot'
+  | 'reset'
   | 'profile'
   | 'postjob'
   | 'jobdetail'

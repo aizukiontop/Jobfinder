@@ -208,5 +208,17 @@ CREATE TABLE IF NOT EXISTS application_status_history (
 CREATE INDEX IF NOT EXISTS ix_application_history
   ON application_status_history(application_id, changed_at);
 
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  used_at TEXT
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS ix_password_reset_user
+  ON password_reset_tokens(user_id, expires_at);
+
 INSERT OR IGNORE INTO schema_migrations(version, name, applied_at)
 VALUES (1, 'initial backend schema', strftime('%Y-%m-%dT%H:%M:%fZ','now'));

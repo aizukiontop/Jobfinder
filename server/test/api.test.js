@@ -1,3 +1,4 @@
+import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import assert from 'node:assert/strict'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { createServer } from 'node:http'
@@ -251,4 +252,47 @@ test('employer ownership and the complete internal application lifecycle are enf
   })
   assert.equal(closeJob.status, 200)
   assert.equal((await json(closeJob)).job.status, 'closed')
+})
+
+test('password reset issues single-use tokens and does not reveal account existence', async () => {
+  const email = 'reset-flow@example.com'
+  const created = await request('/api/auth/register', {
+    method: 'POST',
+    body: { role: 'job-seeker', email, password: 'password123', firstName: 'Reset', lastName: 'Flow' },
+  })
+  assert.equal(created.status, 201)
+
+  const unknown = await request('/api/auth/forgot-password', { method: 'POST', body: { email: 'no-such-user@example.com' } })
+  const known = await request('/api/auth/forgot-password', { method: 'POST', body: { email } })
+  assert.equal(unknown.status, 202)
+  assert.equal(known.status, 202, 'both cases must respond identically')
+
+  const userId = api.db.prepare('SELECT id FROM users WHERE email=?').get(email).id
+  const token = randomBytes(32).toString('base64url')
+  api.db.prepare(`
+    INSERT INTO password_reset_tokens(id,user_id,token_hash,created_at,expires_at)
+    VALUES (?,?,?,?,?)
+  `).run(randomUUID(), userId, createHash('sha256').update(token).digest('hex'),
+    new Date().toISOString(), new Date(Date.now() + 600_000).toISOString())
+
+  const expired = randomBytes(32).toString('base64url')
+  api.db.prepare(`
+    INSERT INTO password_reset_tokens(id,user_id,token_hash,created_at,expires_at)
+    VALUES (?,?,?,?,?)
+  `).run(randomUUID(), userId, createHash('sha256').update(expired).digest('hex'),
+    new Date().toISOString(), new Date(Date.now() - 1_000).toISOString())
+
+  const expiredAttempt = await request('/api/auth/reset-password', { method: 'POST', body: { token: expired, password: 'brandnew123' } })
+  assert.equal(expiredAttempt.status, 400, 'expired tokens must be rejected')
+
+  const reset = await request('/api/auth/reset-password', { method: 'POST', body: { token, password: 'brandnew123' } })
+  assert.equal(reset.status, 200)
+
+  const oldLogin = await request('/api/auth/login', { method: 'POST', body: { email, password: 'password123' } })
+  const newLogin = await request('/api/auth/login', { method: 'POST', body: { email, password: 'brandnew123' } })
+  assert.equal(oldLogin.status, 401, 'the previous password must stop working')
+  assert.equal(newLogin.status, 200)
+
+  const replay = await request('/api/auth/reset-password', { method: 'POST', body: { token, password: 'thirdpass123' } })
+  assert.equal(replay.status, 400, 'tokens must be single use')
 })

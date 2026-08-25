@@ -11,6 +11,8 @@ import ApplicationForm from './pages/ApplicationForm'
 import Applications from './pages/Applications'
 import SignIn from './pages/SignIn'
 import Register from './pages/Register'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import Profile from './pages/Profile'
 import PostJob from './pages/PostJob'
 import JobDetail from './pages/JobDetail'
@@ -50,6 +52,12 @@ function AppContent() {
 
       case 'register':
         return <Register />
+
+      case 'forgot':
+        return <ForgotPassword />
+
+      case 'reset':
+        return <ResetPassword />
 
       case 'profile':
         return <Profile />

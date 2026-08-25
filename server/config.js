@@ -21,5 +21,11 @@ export function loadConfig(overrides = {}) {
     rememberTtlSeconds: overrides.rememberTtlSeconds ?? positiveInteger(process.env.JOBFINDER_REMEMBER_TTL, 2_592_000),
     secureCookies: overrides.secureCookies ?? process.env.NODE_ENV === 'production',
     seedOnStart: overrides.seedOnStart ?? process.env.JOBFINDER_SEED_ON_START === '1',
+    resetTokenTtlSeconds: overrides.resetTokenTtlSeconds ?? positiveInteger(process.env.JOBFINDER_RESET_TTL, 1_800),
+    mail: overrides.mail ?? {
+      provider: process.env.JOBFINDER_MAIL_PROVIDER ?? 'none',
+      apiKey: process.env.JOBFINDER_MAIL_API_KEY ?? '',
+      from: process.env.JOBFINDER_MAIL_FROM ?? 'JobFinder <onboarding@resend.dev>',
+    },
   }
 }

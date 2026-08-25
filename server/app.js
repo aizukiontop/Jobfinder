@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto'
+import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { createReadStream, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import express from 'express'
@@ -8,6 +8,7 @@ import helmet from 'helmet'
 import multer from 'multer'
 import { z } from 'zod'
 import { getJobSkills, getUserSkills, initializeDatabase, normalizeSkill, nowIso, openDatabase, replaceJobSkills, replaceUserSkills } from './db.js'
+import { createMailer, passwordResetEmail } from './mailer.js'
 import { ApiError, asyncRoute, authenticate, clearSessionCookie, createSession, hashPassword, originGuard, requireRole, sha256, verifyPassword, writeSessionCookie } from './security.js'
 
 const APPLICATION_STATUSES = ['applied', 'reviewing', 'shortlisted', 'interview', 'hired', 'rejected']
@@ -38,6 +39,15 @@ const registerSchema = z.discriminatedUnion('role', [
     contactName: z.string().trim().min(1).max(160),
   }).strict(),
 ])
+
+const forgotPasswordSchema = z.object({
+  email: z.string().trim().email().max(254),
+}).strict()
+
+const resetPasswordSchema = z.object({
+  token: z.string().trim().min(20).max(200),
+  password: z.string().min(8).max(128),
+}).strict()
 
 const loginSchema = z.object({
   email: z.string().trim().email().max(254),
@@ -275,6 +285,8 @@ export function createApp(config) {
   app.use(originGuard(config.appOrigin))
 
   const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false })
+  const resetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false })
+  const mailer = createMailer(config.mail)
   const upload = multer({
     storage: multer.diskStorage({ destination: tempDir, filename: (_req, _file, cb) => cb(null, randomUUID()) }),
     limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 10 },
@@ -353,6 +365,60 @@ export function createApp(config) {
     const session = createSession(db, user.id, ttl)
     writeSessionCookie(res, session.token, session.expires, config.secureCookies)
     res.json(sessionDto(db, user))
+  }))
+
+
+  app.post('/api/auth/forgot-password', resetLimiter, asyncRoute(async (req, res) => {
+    const input = parse(forgotPasswordSchema, req.body)
+    const user = db.prepare('SELECT id,email FROM users WHERE email=? AND is_active=1').get(input.email.toLowerCase())
+
+    if (user && mailer.enabled) {
+      const token = randomBytes(32).toString('base64url')
+      const timestamp = nowIso()
+      const expiresAt = new Date(Date.now() + config.resetTokenTtlSeconds * 1000).toISOString()
+
+      db.transaction(() => {
+        db.prepare('DELETE FROM password_reset_tokens WHERE user_id=? AND used_at IS NULL').run(user.id)
+        db.prepare(`
+          INSERT INTO password_reset_tokens(id,user_id,token_hash,created_at,expires_at)
+          VALUES (?,?,?,?,?)
+        `).run(randomUUID(), user.id, sha256(token), timestamp, expiresAt)
+      })()
+
+      const resetUrl = `${config.appOrigin}/?reset=${token}`
+      const message = passwordResetEmail(resetUrl, Math.round(config.resetTokenTtlSeconds / 60))
+      try {
+        await mailer.send({ to: user.email, ...message })
+      } catch (error) {
+        console.error('Password reset email failed', error)
+      }
+    }
+
+    res.status(202).json({ ok: true })
+  }))
+
+  app.post('/api/auth/reset-password', resetLimiter, asyncRoute(async (req, res) => {
+    const input = parse(resetPasswordSchema, req.body)
+    const row = db.prepare(`
+      SELECT t.id, t.user_id, t.expires_at, t.used_at
+      FROM password_reset_tokens t
+      JOIN users u ON u.id=t.user_id AND u.is_active=1
+      WHERE t.token_hash=?
+    `).get(sha256(input.token))
+
+    if (!row || row.used_at || Date.parse(row.expires_at) < Date.now()) {
+      throw new ApiError(400, 'INVALID_RESET_TOKEN', 'This reset link is invalid or has expired. Please request a new one.')
+    }
+
+    const passwordHash = await hashPassword(input.password)
+    const timestamp = nowIso()
+    db.transaction(() => {
+      db.prepare('UPDATE users SET password_hash=?,updated_at=? WHERE id=?').run(passwordHash, timestamp, row.user_id)
+      db.prepare('UPDATE password_reset_tokens SET used_at=? WHERE id=?').run(timestamp, row.id)
+      db.prepare('DELETE FROM sessions WHERE user_id=?').run(row.user_id)
+    })()
+
+    res.json({ ok: true })
   }))
 
   app.get('/api/auth/me', requireAuth, (req, res) => res.json(sessionDto(db, req.auth)))

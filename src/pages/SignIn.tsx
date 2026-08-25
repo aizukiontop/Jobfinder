@@ -163,9 +163,8 @@ export default function SignIn() {
 
             <button
               type="button"
-              style={{
-                color: '#16a34a',
-              }}
+              onClick={() => navigate('forgot')}
+              style={{ color: '#16a34a' }}
               className="text-sm font-medium hover:underline"
             >
               Forgot your password?

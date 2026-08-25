@@ -206,6 +206,7 @@ interface AppState {
   allApplicants: ApplicantRecord[]
 
   sessionLoading: boolean
+  resetToken: string | null
 
   signIn: (
     email: string,
@@ -268,7 +269,13 @@ interface AppState {
 const AppContext = createContext<AppState | null>(null)
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [page, setPage] = useState<Page>('home')
+  const initialReset =
+    typeof window === 'undefined'
+      ? null
+      : new URLSearchParams(window.location.search).get('reset')
+
+  const [resetToken] = useState<string | null>(initialReset)
+  const [page, setPage] = useState<Page>(initialReset ? 'reset' : 'home')
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [prevPage, setPrevPage] = useState<Page | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -313,6 +320,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const reloadJobs = useCallback(() => loadJobs(), [loadJobs])
+
+  useEffect(() => {
+    if (initialReset && typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('reset')
+      window.history.replaceState({}, '', url.pathname + url.search)
+    }
+  }, [initialReset])
 
   useEffect(() => {
     clearLegacyBrowserDataOnce()
@@ -578,6 +593,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         allApplicants,
         searchQuery,
         sessionLoading,
+        resetToken,
         signIn,
         signUp,
         signOut,
