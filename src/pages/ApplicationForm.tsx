@@ -136,7 +136,7 @@ export default function ApplicationForm() {
 
   if (submitted) {
     return (
-      <div style={{ background: '#f9fafb', minHeight: '100vh' }} className="flex items-center justify-center px-4">
+      <div style={{ background: '#f9fafb', flex: 1 }} className="flex items-center justify-center px-4">
         <div
           style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}
           className="max-w-md w-full p-8 text-center"
@@ -178,7 +178,7 @@ export default function ApplicationForm() {
   }
 
   return (
-    <div style={{ background: '#f9fafb', minHeight: '100vh' }} className="px-4 py-8">
+    <div style={{ background: '#f9fafb', flex: 1 }} className="px-4 py-8">
       <div className="max-w-2xl mx-auto">
         {/* Back link */}
         <button

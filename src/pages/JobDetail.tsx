@@ -51,7 +51,7 @@ export default function JobDetail() {
   }, [user, job, calculateMatchScore])
 
   return (
-    <div style={{ background: '#f9fafb', minHeight: '100vh' }} className="px-4 py-8">
+    <div style={{ background: '#f9fafb', flex: 1 }} className="px-4 py-8">
       <div className="max-w-3xl mx-auto">
         {/* Back */}
         <button

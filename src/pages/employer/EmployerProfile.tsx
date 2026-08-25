@@ -72,7 +72,7 @@ export default function EmployerProfile() {
   })
 
   return (
-    <div style={{ background: '#f9fafb', minHeight: '100vh' }} className="py-8 px-4">
+    <div style={{ background: '#f9fafb', flex: 1 }} className="py-8 px-4">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>

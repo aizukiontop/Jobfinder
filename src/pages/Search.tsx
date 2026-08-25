@@ -238,7 +238,7 @@ export default function Search() {
     expLevels.length
 
   return (
-    <div style={{ background: '#f9fafb', minHeight: '100vh' }}>
+    <div style={{ background: '#f9fafb', flex: 1 }}>
       {/* Search bar */}
       <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb' }} className="px-4 py-3">
         {userInsideCity === false && (

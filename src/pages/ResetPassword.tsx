@@ -41,7 +41,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div style={{ background: '#f9fafb', minHeight: '100vh' }} className="flex items-center justify-center px-4 py-12">
+    <div style={{ background: '#f9fafb', flex: 1 }} className="flex items-center justify-center px-4 py-12">
       <div
         style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}
         className="w-full max-w-sm p-8"

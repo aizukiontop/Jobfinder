@@ -41,7 +41,7 @@ export default function EmployerApplicants() {
   const newCount = allApplicants.filter(a => a.status === 'applied').length
 
   return (
-    <div style={{ background: '#f9fafb', minHeight: '100vh' }} className="py-8 px-4">
+    <div style={{ background: '#f9fafb', flex: 1 }} className="py-8 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Applicants</h1>

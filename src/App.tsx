@@ -147,7 +147,7 @@ function AppContent() {
         </div>
       )}
 
-      <main style={{ flex: 1 }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {renderPage()}
       </main>
 

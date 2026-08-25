@@ -111,7 +111,7 @@ export default function PostJob() {
 
   if (submitted) {
     return (
-      <div style={{ background: '#f9fafb', minHeight: '100vh' }} className="flex items-center justify-center px-4">
+      <div style={{ background: '#f9fafb', flex: 1 }} className="flex items-center justify-center px-4">
         <div
           style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}
           className="max-w-md w-full p-8 text-center"
@@ -158,7 +158,7 @@ export default function PostJob() {
   })
 
   return (
-    <div style={{ background: '#f9fafb', minHeight: '100vh' }} className="px-4 py-8">
+    <div style={{ background: '#f9fafb', flex: 1 }} className="px-4 py-8">
       <div className="max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Post a Job</h1>
         <p className="text-sm text-gray-500 mb-6">Fill in the details below to create a new job listing.</p>

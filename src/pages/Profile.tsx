@@ -121,7 +121,7 @@ export default function Profile() {
   }
 
   return (
-    <div style={{ background: '#f9fafb', minHeight: '100vh' }}>
+    <div style={{ background: '#f9fafb', flex: 1 }}>
       <div className="max-w-2xl mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">Profile Settings</h1>
 
