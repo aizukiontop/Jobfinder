@@ -634,7 +634,7 @@ export default function MapView({
           fontSize: 12, fontFamily: 'Inter, sans-serif', color: '#374151',
           zIndex: 900, maxWidth: 270, pointerEvents: 'none',
         }}>
-          <strong>Tap "My Location"</strong> in the search bar to run Dijkstra's algorithm and see the shortest route.
+          <strong>Tap "GPS" or "Pin"</strong> above to set your location and run Dijkstra's algorithm for the shortest route.
         </div>
       )}
     </div>
