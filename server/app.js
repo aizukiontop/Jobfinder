@@ -476,6 +476,30 @@ export function createApp(config) {
     res.status(201).json({ resume: { id: responseId, name: accepted.originalName, updatedAt: accepted.createdAt } })
   }))
 
+  app.delete('/api/me/resume', requireAuth, requireRole('job-seeker'), (req, res) => {
+    const file = db.prepare(`
+      SELECT f.id, f.storage_key
+      FROM job_seeker_profiles p
+      JOIN stored_files f ON f.id=p.resume_file_id
+      WHERE p.user_id=? AND f.kind='profile-resume'
+    `).get(req.auth.id)
+    if (!file) return res.status(204).end()
+
+    db.transaction(() => {
+      db.prepare('UPDATE job_seeker_profiles SET resume_file_id=NULL,updated_at=? WHERE user_id=?')
+        .run(nowIso(), req.auth.id)
+      db.prepare("DELETE FROM stored_files WHERE id=? AND owner_user_id=? AND kind='profile-resume'")
+        .run(file.id, req.auth.id)
+    })()
+
+    try {
+      removeIfPresent(path.join(resumeDir, file.storage_key))
+    } catch (error) {
+      console.error('Failed to remove deleted profile resume file', error)
+    }
+    res.status(204).end()
+  })
+
   app.get('/api/me/resume/download', requireAuth, requireRole('job-seeker'), (req, res, next) => {
     const file = db.prepare(`
       SELECT f.* FROM job_seeker_profiles p JOIN stored_files f ON f.id=p.resume_file_id

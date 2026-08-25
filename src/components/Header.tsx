@@ -4,16 +4,25 @@ import type { Page } from '../types'
 import jobfinderLogo from '../assets/jobfinder-logo.png'
 
 export default function Header() {
-  const { page, navigate, user, setUser, savedJobIds, applications } = useApp()
+  const { page, navigate, user, employer, setUser, savedJobIds, applications } = useApp()
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const navItems: { label: string; page: Page }[] = [
+  const seekerNavItems: { label: string; page: Page }[] = [
     { label: 'Home', page: 'home' },
     { label: 'Search Jobs', page: 'search' },
     { label: 'Saved Jobs', page: 'saved' },
     { label: 'Applications', page: 'applications' },
     { label: 'Profile', page: 'profile' },
   ]
+
+  const employerNavItems: { label: string; page: Page }[] = [
+    { label: 'Dashboard', page: 'employer-dashboard' },
+    { label: 'My Job Posts', page: 'employer-jobs' },
+    { label: 'Applicants', page: 'employer-applicants' },
+    { label: 'Company Profile', page: 'employer-profile' },
+  ]
+
+  const navItems = employer ? employerNavItems : seekerNavItems
 
   const handleNavigate = (targetPage: Page) => {
     navigate(targetPage)
@@ -97,7 +106,7 @@ export default function Header() {
 
         {/* Desktop Right Side */}
         <div className="hidden md:flex items-center gap-3 flex-shrink-0">
-          {user ? (
+          {user || employer ? (
             <>
               <span className="text-sm text-gray-500">
                 Welcome back,{' '}
@@ -105,7 +114,7 @@ export default function Header() {
                   style={{ color: '#0f2044' }}
                   className="font-medium"
                 >
-                  {user.firstName}
+                  {user ? user.firstName : employer?.companyName}
                 </span>
               </span>
 
@@ -204,7 +213,7 @@ export default function Header() {
             })}
 
             <div className="border-t border-gray-200 mt-2 pt-2 pb-2">
-              {user ? (
+              {user || employer ? (
                 <>
                   <div className="px-3 py-2 text-sm text-gray-500">
                     Welcome back,{' '}
@@ -212,7 +221,7 @@ export default function Header() {
                       style={{ color: '#0f2044' }}
                       className="font-medium"
                     >
-                      {user.firstName}
+                      {user ? user.firstName : employer?.companyName}
                     </span>
                   </div>
 

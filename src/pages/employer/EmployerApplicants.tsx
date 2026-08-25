@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useApp } from '../../context'
+import { formatRelativeDate } from '../../lib/formatDate'
 import type { ApplicantRecord } from '../../types'
 
 const STATUS_COLORS: Record<ApplicantRecord['status'], { bg: string; text: string }> = {
@@ -129,7 +130,7 @@ export default function EmployerApplicants() {
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
                       <span>{applicant.applicantEmail}</span>
                       {applicant.phone && <span>{applicant.phone}</span>}
-                      <span>Applied {applicant.appliedDate}</span>
+                      <span>Applied {formatRelativeDate(applicant.appliedDate)}</span>
                       {applicant.resumeName && <span>📎 {applicant.resumeName}</span>}
                     </div>
 
@@ -226,7 +227,7 @@ export default function EmployerApplicants() {
                 </div>
                 <div style={{ background: '#f9fafb', borderRadius: 6 }} className="p-3">
                   <p className="text-xs text-gray-500 mb-0.5">Date Applied</p>
-                  <p className="font-medium text-gray-800">{selectedApplicant.appliedDate}</p>
+                  <p className="font-medium text-gray-800">{formatRelativeDate(selectedApplicant.appliedDate)}</p>
                 </div>
               </div>
 

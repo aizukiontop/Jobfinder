@@ -162,6 +162,10 @@ export async function uploadResume(file: File): Promise<StoredResume> {
   return body.resume
 }
 
+export function deleteResume(): Promise<void> {
+  return request<void>('/me/resume', { method: 'DELETE' })
+}
+
 export const resumeDownloadUrl = `${BASE}/me/resume/download`
 
 export function applicationResumeUrl(applicationId: string): string {

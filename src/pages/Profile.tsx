@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useApp } from '../context'
-import { uploadResume } from '../lib/api'
+import { deleteResume, uploadResume } from '../lib/api'
+import { formatRelativeDate } from '../lib/formatDate'
 import { CATEGORIES, EMPLOYMENT_TYPES, EXPERIENCE_LEVELS } from '../data'
 
 export default function Profile() {
@@ -93,13 +94,8 @@ export default function Profile() {
 
     try {
       const stored = await uploadResume(file)
-      const date = new Date(stored.updatedAt).toLocaleDateString('en-PH', {
-        month: 'long',
-        year: 'numeric',
-      })
       setResumeName(stored.name)
-      setResumeDate(date)
-      updateUser({ resumeName: stored.name, resumeDate: `Updated ${date}` })
+      setResumeDate(stored.updatedAt)
     } catch {
       setResumeName('Upload failed. Please choose a PDF or DOCX under 5 MB.')
     }
@@ -344,13 +340,17 @@ export default function Profile() {
               </svg>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{resumeName}</p>
-                {resumeDate && <p className="text-xs text-gray-400">{resumeDate}</p>}
+                {resumeDate && <p className="text-xs text-gray-400">Updated {formatRelativeDate(resumeDate)}</p>}
               </div>
               <button
-                onClick={() => {
-                  setResumeName('')
-                  setResumeDate('')
-                  updateUser({ resumeName: '', resumeDate: '' })
+                onClick={async () => {
+                  try {
+                    await deleteResume()
+                    setResumeName('')
+                    setResumeDate('')
+                  } catch {
+                    setResumeName('Could not remove the resume. Please try again.')
+                  }
                 }}
                 className="text-gray-400 hover:text-gray-600"
               >
