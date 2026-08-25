@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useApp } from '../context'
+import PasswordField from '../components/PasswordField'
 import { ApiRequestError } from '../lib/api'
 import type { UserRole } from '../types'
 
@@ -413,15 +414,10 @@ export default function Register() {
               Password
             </label>
 
-            <input
-              type="password"
+            <PasswordField
               value={form.password}
-              onChange={e =>
-                updateField(
-                  'password',
-                  e.target.value
-                )
-              }
+              onChange={value => updateField('password', value)}
+              autoComplete="new-password"
               className="w-full px-3 py-2.5 text-sm outline-none"
               style={{
                 border: `1px solid ${
@@ -445,15 +441,10 @@ export default function Register() {
               Confirm Password
             </label>
 
-            <input
-              type="password"
+            <PasswordField
               value={form.confirmPassword}
-              onChange={e =>
-                updateField(
-                  'confirmPassword',
-                  e.target.value
-                )
-              }
+              onChange={value => updateField('confirmPassword', value)}
+              autoComplete="new-password"
               className="w-full px-3 py-2.5 text-sm outline-none"
               style={{
                 border: `1px solid ${

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useApp } from '../context'
+import PasswordField from '../components/PasswordField'
 import { ApiRequestError } from '../lib/api'
 import jobfinderLogo from '../assets/jobfinder-logo.png'
 
@@ -127,19 +128,16 @@ export default function SignIn() {
               Password
             </label>
 
-            <input
-              type="password"
+            <PasswordField
               value={password}
-              onChange={e =>
-                setPassword(e.target.value)
-              }
+              onChange={setPassword}
               placeholder="••••••••"
-              className="w-full px-3 py-2.5 text-sm outline-none text-gray-800"
+              autoComplete="current-password"
+              required
               style={{
                 border: '1px solid #d1d5db',
                 borderRadius: 6,
               }}
-              required
             />
           </div>
 
@@ -190,28 +188,6 @@ export default function SignIn() {
           </button>
         </form>
 
-        {/* Demo employer account */}
-
-        <div
-          style={{
-            background: '#f9fafb',
-            border: '1px solid #e5e7eb',
-            borderRadius: 6,
-          }}
-          className="mt-6 p-3"
-        >
-          <p className="text-xs font-semibold text-gray-700 mb-1">
-            Employer Demo
-          </p>
-
-          <p className="text-xs text-gray-500">
-            hr@premiertechph.com
-          </p>
-
-          <p className="text-xs text-gray-500">
-            Password: demo123
-          </p>
-        </div>
       </div>
     </div>
   )
