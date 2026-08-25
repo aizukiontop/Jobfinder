@@ -23,6 +23,7 @@ export default function Profile() {
     barangay: user?.barangay ?? '',
   })
   const [saved, setSaved] = useState(false)
+  const [savingProfile, setSavingProfile] = useState(false)
   const [resumeName, setResumeName] = useState(user?.resumeName ?? '')
   const [resumeDate, setResumeDate] = useState(user?.resumeDate ?? '')
   const [visibility, setVisibility] = useState<'Public' | 'Private'>('Public')
@@ -116,9 +117,12 @@ export default function Profile() {
       resumeDate,
       ...homeLocationUpdate(),
     }
-    if (!(await updateUser(updates))) return
+    setSavingProfile(true)
+    const ok = await updateUser(updates)
+    setSavingProfile(false)
+    if (!ok) return
     setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
+    setTimeout(() => setSaved(false), 4000)
   }
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -394,13 +398,26 @@ export default function Profile() {
             </div>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-3">
+            {saved && (
+              <span
+                role="status"
+                style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: 6, color: '#166534' }}
+                className="px-3 py-1.5 text-sm font-medium flex items-center gap-1.5"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Changes saved
+              </span>
+            )}
             <button
               onClick={handleSave}
+              disabled={savingProfile}
               style={{ background: '#0f2044', color: '#fff', borderRadius: 6 }}
-              className="px-6 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity"
+              className="px-6 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
             >
-              Save Changes
+              {savingProfile ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
         </div>
