@@ -4,6 +4,7 @@ import { getExternalApplicationUrl } from '../lib/applicationLinks'
 import { BARANGAY_NAMES } from '../data/barangays'
 import MapView from '../components/MapView'
 import type { Job } from '../types'
+import type { SkillMatchDetail } from '../lib/ontology'
 
 function BookmarkIcon({ filled }: { filled: boolean }) {
   return (
@@ -74,7 +75,7 @@ const EXPERIENCE_FILTERS = [
 
 export default function Search() {
   const { allJobs, navigate, toggleSave, savedJobIds, searchQuery, setSearchQuery,
-          calculateMatchScore, user } = useApp()
+          calculateMatchScore, user, getSkillBreakdown } = useApp()
   const [localQuery, setLocalQuery] = useState(searchQuery)
   const [dateFilter, setDateFilter] = useState('Any time')
   const [empTypes, setEmpTypes] = useState<string[]>([])
@@ -238,7 +239,7 @@ export default function Search() {
     expLevels.length
 
   return (
-    <div style={{ background: '#f9fafb', flex: 1 }}>
+    <div style={{ background: '#f9fafb', minHeight: '100vh' }}>
       {/* Search bar */}
       <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb' }} className="px-4 py-3">
         {userInsideCity === false && (
@@ -778,11 +779,157 @@ export default function Search() {
                     View Details
                   </button>
                 </div>
+
+                {/* Skill Match Breakdown — shown only when logged in */}
+                {user && (
+                  <PreviewSkillBreakdown
+                    job={selectedJob}
+                    getSkillBreakdown={getSkillBreakdown}
+                  />
+                )}
               </div>
             )}
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// ─── Preview Skill Match Breakdown ────────────────────────────────────────────
+// Reuses explainSkillMatch() via getSkillBreakdown() from context.
+// Does not duplicate or modify any matching logic.
+
+function PreviewSkillBreakdown({
+  job,
+  getSkillBreakdown,
+}: {
+  job: Job
+  getSkillBreakdown: (job: Job) => SkillMatchDetail[]
+}) {
+  const [open, setOpen] = useState(false)
+  const breakdown = getSkillBreakdown(job)
+  if (breakdown.length === 0) return null
+
+  const exact    = breakdown.filter(d => d.matchType === 'exact')
+  const ontology = breakdown.filter(d => d.matchType === 'ontology')
+  const missing  = breakdown.filter(d => d.matchType === 'missing')
+  const skillScore = Math.round(
+    breakdown.reduce((sum, d) => sum + d.similarity, 0) / breakdown.length * 100
+  )
+
+  return (
+    <div style={{ borderTop: '1px solid #f3f4f6', marginTop: 10, paddingTop: 8 }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: '100%', textAlign: 'left', background: 'none',
+          border: '1px solid #e5e7eb', borderRadius: 6,
+          cursor: 'pointer', padding: '7px 10px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}
+      >
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>
+          Skill Match Breakdown
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{
+            fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '1px 8px',
+            background: skillScore >= 70 ? '#dcfce7' : skillScore >= 40 ? '#fef9c3' : '#fee2e2',
+            color: skillScore >= 70 ? '#15803d' : skillScore >= 40 ? '#a16207' : '#b91c1c',
+          }}>
+            {skillScore}%
+          </span>
+          <span style={{ fontSize: 11, color: '#9ca3af' }}>{open ? '▲' : '▼'}</span>
+        </div>
+      </button>
+
+      {open && (
+        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {/* Summary pills */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {exact.length > 0 && (
+              <span style={{ background: '#dcfce7', color: '#15803d', borderRadius: 999, fontSize: 10, padding: '1px 7px', fontWeight: 600 }}>
+                ✓ {exact.length} exact
+              </span>
+            )}
+            {ontology.length > 0 && (
+              <span style={{ background: '#dbeafe', color: '#1d4ed8', borderRadius: 999, fontSize: 10, padding: '1px 7px', fontWeight: 600 }}>
+                ~ {ontology.length} ontology
+              </span>
+            )}
+            {missing.length > 0 && (
+              <span style={{ background: '#fee2e2', color: '#b91c1c', borderRadius: 999, fontSize: 10, padding: '1px 7px', fontWeight: 600 }}>
+                ✗ {missing.length} missing
+              </span>
+            )}
+          </div>
+
+          {/* Per-requirement rows */}
+          {breakdown.map((d, i) => {
+            const isExact    = d.matchType === 'exact'
+            const isOntology = d.matchType === 'ontology'
+            const isMissing  = d.matchType === 'missing'
+            const icon       = isExact ? '✓' : isOntology ? '~' : '✗'
+            const iconColor  = isExact ? '#15803d' : isOntology ? '#1d4ed8' : '#9ca3af'
+            const bg         = isExact ? '#f0fdf4' : isOntology ? '#eff6ff' : '#fafafa'
+            const border     = isExact ? '#bbf7d0' : isOntology ? '#bfdbfe' : '#e5e7eb'
+            return (
+              <div key={i} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 6, padding: '7px 9px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: iconColor }}>{icon}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#111827' }}>{d.required}</span>
+                      {d.bestMatch && (
+                        <>
+                          <span style={{ fontSize: 10, color: '#9ca3af' }}>←</span>
+                          <span style={{ fontSize: 11, color: '#374151' }}>{d.bestMatch}</span>
+                        </>
+                      )}
+                    </div>
+                    {isOntology && d.ontologyPath.length > 1 && (
+                      <div style={{ fontSize: 10, color: '#1d4ed8', marginTop: 2 }}>
+                        {d.ontologyPath.join(' → ')} ({d.distance} edge{d.distance !== 1 ? 's' : ''})
+                      </div>
+                    )}
+                    {isMissing && (
+                      <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>No match in your profile</div>
+                    )}
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: iconColor }}>
+                      {Math.round(d.similarity * 100)}%
+                    </div>
+                    <div style={{ fontSize: 9, color: '#9ca3af' }}>
+                      {isMissing ? 'no credit' : `1/(1+${d.distance})`}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+
+          {/* Score reconciliation */}
+          <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '7px 9px', fontSize: 11 }}>
+            <div style={{ fontWeight: 600, color: '#374151', marginBottom: 2 }}>Score calculation</div>
+            <div style={{ color: '#6b7280' }}>
+              ({breakdown.map((d, i) => (
+                <span key={i}>
+                  {i > 0 ? ' + ' : ''}
+                  <span style={{
+                    fontWeight: 600,
+                    color: d.matchType === 'missing' ? '#b91c1c' : d.matchType === 'exact' ? '#15803d' : '#1d4ed8',
+                  }}>{d.similarity.toFixed(2)}</span>
+                </span>
+              ))}) ÷ {breakdown.length} = <span style={{ fontWeight: 700, color: '#374151' }}>{skillScore}%</span>
+            </div>
+            <div style={{ color: '#9ca3af', fontSize: 10, marginTop: 4 }}>
+              Ontology graph gives partial credit for related skills.
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
