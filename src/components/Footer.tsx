@@ -11,17 +11,7 @@ export default function Footer() {
     >
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
         <p className="text-xs text-gray-400">© 2026 JobFinder. All rights reserved.</p>
-        <div className="flex gap-4">
-          {['Terms', 'Privacy', 'Accessibility', 'Contact'].map(l => (
-            <button
-              key={l}
-              style={{ color: '#16a34a' }}
-              className="text-xs hover:underline"
-            >
-              {l}
-            </button>
-          ))}
-        </div>
+        <p className="text-xs text-gray-400">Job opportunities in Angeles City, Pampanga.</p>
       </div>
     </footer>
   )

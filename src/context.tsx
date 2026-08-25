@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -209,6 +210,7 @@ interface AppState {
   sessionLoading: boolean
   resetToken: string | null
   isAdmin: boolean
+  refreshAccountData: () => Promise<void>
 
   signIn: (
     email: string,
@@ -286,6 +288,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [employer, setEmployerState] = useState<Employer | null>(null)
   const [sessionLoading, setSessionLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
+  const userRef = useRef<User | null>(null)
+  const employerRef = useRef<Employer | null>(null)
 
   const [savedJobIds, setSavedJobIds] = useState<string[]>([])
   const [applications, setApplications] = useState<Application[]>([])
@@ -356,6 +360,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setEmployerJobs(jobs.map(toEmployerJob))
     setAllApplicants(applicants.map(toApplicantRecord))
   }, [])
+
+  const refreshAccountData = useCallback(async () => {
+    try {
+      if (userRef.current) await loadSeekerData()
+      else if (employerRef.current) await loadEmployerData()
+    } catch {
+      // A failed refresh leaves the last known data on screen.
+    }
+  }, [loadSeekerData, loadEmployerData])
 
   const adoptSession = useCallback(
     async (session: api.SessionResponse | null, signal?: AbortSignal) => {
@@ -536,7 +549,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLocMode('gps')
   }
 
+  useEffect(() => { userRef.current = user }, [user])
+  useEffect(() => { employerRef.current = employer }, [employer])
+
+  useEffect(() => {
+    const onFocus = () => { void refreshAccountData() }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [refreshAccountData])
+
+  const LIVE_PAGES = new Set<Page>([
+    'applications', 'saved', 'employer-dashboard', 'employer-jobs', 'employer-applicants',
+  ])
+
   function navigate(newPage: Page, jobId?: string | null) {
+    if (LIVE_PAGES.has(newPage)) void refreshAccountData()
     setPrevPage(page)
     setPage(newPage)
     if (jobId !== undefined) setSelectedJobId(jobId ?? null)
@@ -600,6 +627,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         sessionLoading,
         resetToken,
         isAdmin,
+        refreshAccountData,
         signIn,
         signUp,
         signOut,

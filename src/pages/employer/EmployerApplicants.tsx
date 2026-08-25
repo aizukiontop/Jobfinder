@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useApp } from '../../context'
 import { formatRelativeDate } from '../../lib/formatDate'
 import type { ApplicantRecord } from '../../types'
@@ -15,10 +15,15 @@ const STATUS_COLORS: Record<ApplicantRecord['status'], { bg: string; text: strin
 const STATUS_ORDER: ApplicantRecord['status'][] = ['applied', 'reviewing', 'shortlisted', 'interview', 'hired', 'rejected']
 
 export default function EmployerApplicants() {
-  const { employerJobs, allApplicants, updateApplicantStatus, selectedJobId, getApplicantsForJob } = useApp()
+  const { employerJobs, allApplicants, updateApplicantStatus, selectedJobId, getApplicantsForJob, refreshAccountData } = useApp()
   // Pre-filter by the job ID passed from navigate(), if any
   const [jobFilter, setJobFilter] = useState<string>(selectedJobId ?? 'all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+
+  useEffect(() => {
+    const id = window.setInterval(() => { void refreshAccountData() }, 30_000)
+    return () => window.clearInterval(id)
+  }, [refreshAccountData])
   const [selectedApplicant, setSelectedApplicant] = useState<ApplicantRecord | null>(null)
   const [confirmAction, setConfirmAction] = useState<{ id: string; status: ApplicantRecord['status']; label: string } | null>(null)
 
