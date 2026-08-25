@@ -40,6 +40,21 @@ export default function ApplicationForm() {
   const [submitted, setSubmitted] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  if (!user) {
+    return (
+      <div className="text-center py-20 text-gray-500">
+        <p className="text-sm mb-4">Please sign in to apply for this job.</p>
+        <button
+          onClick={() => navigate('signin')}
+          style={{ background: '#0f2044', color: '#fff', borderRadius: 6 }}
+          className="px-6 py-2.5 text-sm font-semibold"
+        >
+          Sign In
+        </button>
+      </div>
+    )
+  }
+
   if (!job) {
     return (
       <div className="text-center py-20 text-gray-500">
