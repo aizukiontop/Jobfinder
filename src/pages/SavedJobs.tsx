@@ -1,4 +1,5 @@
 import { useApp } from '../context'
+import { getExternalApplicationUrl } from '../lib/applicationLinks'
 
 function BookmarkIcon({ filled }: { filled: boolean }) {
   return (
@@ -94,13 +95,25 @@ export default function SavedJobs() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => navigate('apply', job.id)}
-                  style={{ background: '#16a34a', color: '#fff', borderRadius: 6 }}
-                  className="w-full py-2.5 text-sm font-semibold hover:bg-green-700 transition-colors mt-auto"
-                >
-                  Apply Now
-                </button>
+                {getExternalApplicationUrl(job) ? (
+                  <a
+                    href={getExternalApplicationUrl(job) ?? undefined}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ background: '#16a34a', color: '#fff', borderRadius: 6 }}
+                    className="w-full py-2.5 text-center text-sm font-semibold hover:bg-green-700 transition-colors mt-auto"
+                  >
+                    Apply at Verified Source
+                  </a>
+                ) : (
+                  <button
+                    onClick={() => navigate('apply', job.id)}
+                    style={{ background: '#16a34a', color: '#fff', borderRadius: 6 }}
+                    className="w-full py-2.5 text-sm font-semibold hover:bg-green-700 transition-colors mt-auto"
+                  >
+                    Apply Now
+                  </button>
+                )}
               </div>
             ))}
           </div>
