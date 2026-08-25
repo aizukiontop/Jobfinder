@@ -27,5 +27,5 @@ server/.env
 .aider*
 .cursor/
 
-# Server deployment scripts reference IGST production paths - keep local only
+# Server deployment scripts reference private host paths - keep local only
 deploy/
