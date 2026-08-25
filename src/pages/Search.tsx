@@ -697,21 +697,12 @@ export default function Search() {
                 resizeSignal={mapExpanded}
               />
 
-              {mapExpanded ? (
-                <button
-                  type="button"
-                  onClick={() => setMapExpanded(false)}
-                  style={{ background: 'rgba(255,255,255,0.95)', border: '1px solid #d1d5db', borderRadius: 999 }}
-                  className="absolute bottom-2 left-1/2 z-[1000] -translate-x-1/2 px-3 py-1 text-xs font-semibold text-gray-700 shadow-sm lg:hidden"
-                >
-                  Collapse map
-                </button>
-              ) : (
+              {!mapExpanded && (
                 <button
                   type="button"
                   onClick={() => setMapExpanded(true)}
                   aria-label="Expand the job map"
-                  className="absolute inset-0 z-[1000] flex items-end justify-center pb-2 lg:hidden"
+                  className="absolute inset-0 z-[1000] flex items-center justify-center lg:hidden"
                   style={{ background: 'transparent' }}
                 >
                   <span
@@ -723,6 +714,17 @@ export default function Search() {
                 </button>
               )}
             </div>
+
+            {mapExpanded && (
+              <button
+                type="button"
+                onClick={() => setMapExpanded(false)}
+                style={{ border: '1px solid #d1d5db', borderRadius: 8, background: '#fff' }}
+                className="mt-2 w-full py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 lg:hidden"
+              >
+                Collapse map
+              </button>
+            )}
 
             {selectedJob && !mapExpanded && (
               <div
