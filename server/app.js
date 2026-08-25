@@ -657,11 +657,35 @@ export function createApp(config) {
       ORDER BY u.created_at DESC
     `).all()
 
+    const postings = db.prepare(`
+      SELECT
+        j.id, j.owner_user_id, j.title, j.status, j.employment_type, j.date_posted, j.created_at,
+        (SELECT count(*) FROM applications a WHERE a.job_id = j.id) AS applicant_count
+      FROM jobs j
+      WHERE j.owner_user_id IS NOT NULL
+      ORDER BY j.created_at DESC
+    `).all()
+
+    const byOwner = new Map()
+    for (const job of postings) {
+      const list = byOwner.get(job.owner_user_id) ?? []
+      list.push({
+        id: job.id,
+        title: job.title,
+        status: job.status,
+        employmentType: job.employment_type,
+        applicants: job.applicant_count,
+        postedAt: job.date_posted ?? job.created_at,
+      })
+      byOwner.set(job.owner_user_id, list)
+    }
+
     res.json({
       items: rows.map((row) => ({
         id: row.id,
         email: row.email,
         role: row.role,
+        jobs: byOwner.get(row.id) ?? [],
         active: row.is_active === 1,
         name: row.role === 'employer'
           ? row.company_name

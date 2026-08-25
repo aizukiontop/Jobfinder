@@ -38,6 +38,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
+  const [expanded, setExpanded] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isAdmin) return
@@ -118,7 +119,7 @@ export default function Admin() {
                 </tr>
               </thead>
               <tbody>
-                {shown.map(u => (
+                {shown.flatMap(u => [
                   <tr key={u.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900">{u.name || '—'}</p>
@@ -127,19 +128,63 @@ export default function Admin() {
                     <td className="px-4 py-3 text-gray-600">{u.email}</td>
                     <td className="px-4 py-3"><RoleTag role={u.role} /></td>
                     <td className="px-4 py-3 text-xs text-gray-600">
-                      {u.role === 'employer'
-                        ? `${u.jobsPosted} job${u.jobsPosted === 1 ? '' : 's'} posted`
-                        : `${u.applications} application${u.applications === 1 ? '' : 's'}, ${u.savedJobs} saved`}
-                      {u.role === 'job-seeker' && (
-                        <span className="text-gray-400">{u.hasResume ? ' · resume' : ' · no resume'}</span>
+                      {u.role === 'employer' ? (
+                        u.jobsPosted > 0 ? (
+                          <button
+                            onClick={() => setExpanded(expanded === u.id ? null : u.id)}
+                            style={{ color: '#16a34a' }}
+                            className="font-medium hover:underline"
+                          >
+                            {u.jobsPosted} job{u.jobsPosted === 1 ? '' : 's'} posted
+                            <span className="ml-1">{expanded === u.id ? '▾' : '▸'}</span>
+                          </button>
+                        ) : (
+                          'No jobs posted'
+                        )
+                      ) : (
+                        <>
+                          {u.applications} application{u.applications === 1 ? '' : 's'}, {u.savedJobs} saved
+                          <span className="text-gray-400">{u.hasResume ? ' · resume' : ' · no resume'}</span>
+                        </>
                       )}
                     </td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{formatRelativeDate(u.createdAt)}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">
                       {u.lastSeen ? formatRelativeDate(u.lastSeen) : 'never'}
                     </td>
-                  </tr>
-                ))}
+                  </tr>,
+                  expanded === u.id && u.jobs.length > 0 && (
+                    <tr key={u.id + '-jobs'} style={{ background: '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
+                      <td colSpan={6} className="px-4 py-3">
+                        <p className="text-xs font-semibold text-gray-700 mb-2">
+                          Jobs posted by {u.name || u.email}
+                        </p>
+                        <div className="space-y-1">
+                          {u.jobs.map(j => (
+                            <div key={j.id} className="flex flex-wrap items-center gap-2 text-xs">
+                              <span className="font-medium text-gray-900">{j.title || 'Untitled'}</span>
+                              <span
+                                style={{
+                                  background: j.status === 'active' ? '#dcfce7' : j.status === 'draft' ? '#fef3c7' : '#f3f4f6',
+                                  color: j.status === 'active' ? '#166534' : j.status === 'draft' ? '#92400e' : '#4b5563',
+                                  borderRadius: 999,
+                                }}
+                                className="px-2 py-0.5"
+                              >
+                                {j.status}
+                              </span>
+                              <span className="text-gray-500">{j.employmentType}</span>
+                              <span className="text-gray-500">
+                                · {j.applicants} applicant{j.applicants === 1 ? '' : 's'}
+                              </span>
+                              <span className="text-gray-400">· {formatRelativeDate(j.postedAt)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ),
+                ])}
                 {shown.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-4 py-10 text-center text-gray-500">

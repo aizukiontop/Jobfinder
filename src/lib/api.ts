@@ -84,8 +84,18 @@ export interface SessionAccount {
   isAdmin?: boolean
 }
 
+export interface AdminJob {
+  id: string
+  title: string
+  status: 'draft' | 'active' | 'closed'
+  employmentType: string
+  applicants: number
+  postedAt: string
+}
+
 export interface AdminUser {
   id: string
+  jobs: AdminJob[]
   email: string
   role: 'job-seeker' | 'employer'
   active: boolean
