@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useApp } from '../../context'
 import { ApiRequestError, createEmployerJob, updateEmployerJob as patchEmployerJob } from '../../lib/api'
 import { ANGELES_CITY_BARANGAYS } from '../../data/barangays'
+import { findBarangay, isWithinAngelesCity } from '../../lib/geo'
+import MapView from '../../components/MapView'
 import type { EmployerJob } from '../../types'
 import { CATEGORIES, EMPLOYMENT_TYPES, EXPERIENCE_LEVELS } from '../../data'
 
@@ -32,6 +34,28 @@ export default function EmployerPostJob() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [pin, setPin] = useState<{ lat: number; lng: number } | null>(
+    editing?.coordinateSource === 'exact-address' && editing.lat != null && editing.lng != null
+      ? { lat: editing.lat, lng: editing.lng }
+      : null
+  )
+  const [pinNote, setPinNote] = useState('')
+
+  const handleMapClick = (lat: number, lng: number) => {
+    if (!isWithinAngelesCity(lat, lng)) {
+      setPinNote('That point is outside Angeles City.')
+      return
+    }
+    setPin({ lat, lng })
+    const detected = findBarangay(lat, lng)
+    if (detected) {
+      setForm(f => ({ ...f, barangay: detected }))
+      setPinNote(`Pinned in Brgy. ${detected}.`)
+      setErrors(prev => ({ ...prev, barangay: '' }))
+    } else {
+      setPinNote('Pinned. Choose the barangay below as well.')
+    }
+  }
 
   const field = (name: keyof typeof form) => ({
     value: form[name],
@@ -97,9 +121,13 @@ export default function EmployerPostJob() {
         salaryMax: salaryMax || null,
         openings: Number(form.openings) || 1,
         applicationDeadline: form.deadline || null,
-        lat: barangayCentroid?.lat ?? null,
-        lng: barangayCentroid?.lng ?? null,
-        coordinateSource: barangayCentroid ? 'barangay-centroid' : null,
+        lat: pin ? pin.lat : barangayCentroid?.lat ?? null,
+        lng: pin ? pin.lng : barangayCentroid?.lng ?? null,
+        coordinateSource: pin
+          ? 'exact-address'
+          : barangayCentroid
+            ? 'barangay-centroid'
+            : null,
         status: isDraft ? 'draft' : 'active',
       }
 
@@ -273,6 +301,46 @@ export default function EmployerPostJob() {
             </select>
             {errors.barangay && <p className="text-xs text-red-500 mt-1">{errors.barangay}</p>}
             <p className="text-xs text-gray-500 mt-1">Places the job on the map and drives travel distance for applicants.</p>
+
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-gray-700">
+                  Pin the exact workplace <span className="text-gray-400 font-normal">(recommended)</span>
+                </label>
+                {pin && (
+                  <button
+                    type="button"
+                    onClick={() => { setPin(null); setPinNote('') }}
+                    className="text-xs font-medium text-red-500 hover:underline"
+                  >
+                    Clear pin
+                  </button>
+                )}
+              </div>
+              <div
+                style={{ border: '1px solid #d1d5db', borderRadius: 8, overflow: 'hidden' }}
+                className="relative h-[260px]"
+              >
+                <MapView
+                  jobs={[]}
+                  selectedJobId={null}
+                  onSelectJob={() => {}}
+                  userLat={pin?.lat ?? null}
+                  userLng={pin?.lng ?? null}
+                  onMapClick={handleMapClick}
+                  pinMode
+                  minHeight={0}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {pinNote || 'Click the map to place the workplace exactly. Without a pin the barangay centre is used.'}
+              </p>
+              {pin && (
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {pin.lat.toFixed(5)}, {pin.lng.toFixed(5)}
+                </p>
+              )}
+            </div>
 
             <label className="block text-sm font-medium text-gray-700 mb-1.5 mt-4">Street address or landmark <span className="text-red-500">*</span></label>
             <input {...field('location')} style={inputStyle(errors.location)} className={baseInput} placeholder="e.g. MacArthur Highway, near Marquee Mall" />
