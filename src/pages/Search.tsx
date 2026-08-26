@@ -677,13 +677,13 @@ export default function Search() {
 
         {/* Map */}
         {showMap && (
-          <div className="order-first w-full flex-shrink-0 lg:order-none lg:w-[380px] lg:max-w-[380px]">
+          <div className="order-first w-full flex-shrink-0 lg:order-none lg:w-[380px] lg:max-w-[380px] lg:sticky lg:top-[70px] lg:self-start lg:max-h-[calc(100vh-88px)] lg:overflow-y-auto">
             <div
               style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}
               className={
                 mapExpanded
-                  ? 'relative h-[500px] lg:sticky lg:top-[70px]'
-                  : 'relative h-[200px] lg:sticky lg:top-[70px] lg:h-[500px]'
+                  ? 'relative h-[500px]'
+                  : 'relative h-[200px] lg:h-[500px]'
               }
             >
               <MapView
