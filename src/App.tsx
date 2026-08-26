@@ -1,4 +1,5 @@
 import { AppProvider, useApp } from './context'
+import { checkAccess, homePageFor } from './lib/access'
 
 import Header from './components/Header'
 import EmployerHeader from './components/EmployerHeader'
@@ -25,7 +26,13 @@ import EmployerApplicants from './pages/employer/EmployerApplicants'
 import EmployerProfile from './pages/employer/EmployerProfile'
 
 function AppContent() {
-  const { page, jobsLoading, jobsError, reloadJobs, actionError, dismissActionError } = useApp()
+  const {
+    page, jobsLoading, jobsError, reloadJobs, actionError, dismissActionError,
+    user, employer, isAdmin, sessionLoading, navigate,
+  } = useApp()
+
+  const viewer = { isSeeker: Boolean(user), isEmployer: Boolean(employer), isAdmin }
+  const access = checkAccess(page, viewer)
 
   const isEmployerPage =
     page === 'employer-dashboard' ||
@@ -152,10 +159,63 @@ function AppContent() {
       )}
 
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {renderPage()}
+        {sessionLoading && !access.allowed ? (
+          <div className="text-center py-20 text-gray-500 text-sm">Checking your access…</div>
+        ) : access.allowed ? (
+          renderPage()
+        ) : (
+          <AccessNotice
+            reason={access.reason}
+            audience={access.audience}
+            onSignIn={() => navigate('signin')}
+            onHome={() => navigate(homePageFor(viewer))}
+          />
+        )}
       </main>
 
       <Footer />
+    </div>
+  )
+}
+
+function AccessNotice({
+  reason,
+  audience,
+  onSignIn,
+  onHome,
+}: {
+  reason: 'signed-out' | 'wrong-role'
+  audience: string
+  onSignIn: () => void
+  onHome: () => void
+}) {
+  const label =
+    audience === 'employer' ? 'employers'
+      : audience === 'admin' ? 'administrators'
+        : 'job seekers'
+
+  return (
+    <div className="flex-1 flex items-center justify-center px-4 py-20">
+      <div
+        style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}
+        className="w-full max-w-sm p-8 text-center"
+      >
+        <h1 className="text-lg font-bold text-gray-900 mb-2">
+          {reason === 'signed-out' ? 'Sign in to continue' : 'This area is for ' + label}
+        </h1>
+        <p className="text-sm text-gray-500 mb-6">
+          {reason === 'signed-out'
+            ? 'This page is only available once you are signed in.'
+            : 'Your account does not have access to this part of JobFinder.'}
+        </p>
+        <button
+          onClick={reason === 'signed-out' ? onSignIn : onHome}
+          style={{ background: '#0f2044', color: '#fff', borderRadius: 6 }}
+          className="px-6 py-2.5 text-sm font-semibold hover:opacity-90"
+        >
+          {reason === 'signed-out' ? 'Sign In' : 'Go to my dashboard'}
+        </button>
+      </div>
     </div>
   )
 }
