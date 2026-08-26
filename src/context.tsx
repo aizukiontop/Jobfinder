@@ -19,6 +19,7 @@ import type {
 } from './types'
 
 import * as api from './lib/api'
+import { pathToRoute, routeToPath } from './lib/router'
 import { skillMatchScore } from './lib/skillMatch'
 import { explainSkillMatch, type SkillMatchDetail } from './lib/ontology'
 import { computeMatchScore } from './config/matching'
@@ -299,9 +300,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ? null
       : new URLSearchParams(window.location.search).get('reset')
 
+  const initialRoute =
+    typeof window === 'undefined'
+      ? { page: 'home' as Page, jobId: null }
+      : pathToRoute(window.location.pathname)
+
   const [resetToken] = useState<string | null>(initialReset)
-  const [page, setPage] = useState<Page>(initialReset ? 'reset' : 'home')
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
+  const [page, setPage] = useState<Page>(initialReset ? 'reset' : initialRoute.page)
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(initialRoute.jobId)
   const [prevPage, setPrevPage] = useState<Page | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -597,15 +603,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     'applications', 'saved', 'employer-dashboard', 'employer-jobs', 'employer-applicants',
   ])
 
+  function applyRoute(newPage: Page, jobId: string | null) {
+    setPrevPage(page)
+    setPage(newPage)
+    setSelectedJobId(jobId)
+  }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onPopState = () => {
+      const route = pathToRoute(window.location.pathname)
+      setPrevPage(null)
+      setPage(route.page)
+      setSelectedJobId(route.jobId)
+      if (LIVE_PAGES.has(route.page)) void refreshAccountData()
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshAccountData])
+
   function navigate(newPage: Page, jobId?: string | null) {
     if (LIVE_PAGES.has(newPage)) void refreshAccountData()
     // Reaching the post form without naming a job means composing a new one,
     // never editing whichever job happened to be selected before.
     if (newPage === 'employer-post' && jobId === undefined) jobId = null
-    setPrevPage(page)
-    setPage(newPage)
-    if (jobId !== undefined) setSelectedJobId(jobId ?? null)
-    window.scrollTo(0, 0)
+    const nextJobId = jobId !== undefined ? jobId ?? null : selectedJobId
+    applyRoute(newPage, nextJobId)
+
+    if (typeof window !== 'undefined') {
+      const path = routeToPath(newPage, nextJobId)
+      if (path !== window.location.pathname) {
+        window.history.pushState({}, '', path)
+      }
+      window.scrollTo(0, 0)
+    }
   }
 
   const calculateSkillMatchScore = (job: Job): number => {

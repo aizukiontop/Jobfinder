@@ -24,7 +24,7 @@ function BuildingIcon() {
 }
 
 export default function ApplicationForm() {
-  const { allJobs, selectedJobId, navigate, prevPage, submitApplication, hasApplied, user } = useApp()
+  const { allJobs, selectedJobId, navigate, prevPage, submitApplication, hasApplied, user, jobsLoading } = useApp()
   const job = allJobs.find(j => j.id === selectedJobId)
 
   const [form, setForm] = useState({
@@ -53,6 +53,14 @@ export default function ApplicationForm() {
         >
           Sign In
         </button>
+      </div>
+    )
+  }
+
+  if (!job && jobsLoading) {
+    return (
+      <div className="text-center py-20 text-gray-500">
+        <p className="text-sm">Loading job…</p>
       </div>
     )
   }

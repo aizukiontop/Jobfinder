@@ -21,8 +21,16 @@ function BuildingIcon() {
 }
 
 export default function JobDetail() {
-  const { allJobs, selectedJobId, navigate, prevPage, toggleSave, savedJobIds, hasApplied, user, calculateMatchScore, calculateSkillMatchScore, getSkillBreakdown, calculateDistanceScore } = useApp()
+  const { allJobs, selectedJobId, navigate, prevPage, toggleSave, savedJobIds, hasApplied, user, calculateMatchScore, calculateSkillMatchScore, getSkillBreakdown, calculateDistanceScore, jobsLoading } = useApp()
   const job = allJobs.find(j => j.id === selectedJobId)
+
+  if (!job && jobsLoading) {
+    return (
+      <div className="text-center py-20 text-gray-500">
+        <p className="text-sm">Loading job…</p>
+      </div>
+    )
+  }
 
   if (!job) {
     return (
