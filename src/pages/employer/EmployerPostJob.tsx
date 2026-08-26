@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useApp } from '../../context'
 import { ApiRequestError, createEmployerJob, updateEmployerJob as patchEmployerJob } from '../../lib/api'
-import { DEFAULT_MAP_CENTER } from '../../config/geo'
+import { ANGELES_CITY_BARANGAYS } from '../../data/barangays'
 import type { EmployerJob } from '../../types'
 import { CATEGORIES, EMPLOYMENT_TYPES, EXPERIENCE_LEVELS } from '../../data'
 
@@ -27,6 +27,7 @@ export default function EmployerPostJob() {
     openings: editing?.openings ? String(editing.openings) : '1',
     deadline: editing?.deadline ? String(editing.deadline).slice(0, 10) : '',
     requiredSkills: (editing?.requiredSkills ?? []).join(', '),
+    barangay: editing?.barangay ?? '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
@@ -45,7 +46,8 @@ export default function EmployerPostJob() {
     if (!form.title.trim()) e.title = 'Job title is required.'
     if (!form.description.trim()) e.description = 'Description is required.'
     if (!form.requirements.trim()) e.requirements = 'Requirements are required.'
-    if (!form.location.trim()) e.location = 'Location is required.'
+    if (!form.location.trim()) e.location = 'Street address or landmark is required.'
+    if (!form.barangay) e.barangay = 'Select the barangay where the work is located.'
     if (!form.requiredSkills.trim()) e.requiredSkills = 'At least one required skill is needed.'
     if (form.deadline) {
       const today = new Date()
@@ -66,6 +68,7 @@ export default function EmployerPostJob() {
       if (Object.keys(errs).length > 0) { setErrors(errs); return }
     }
 
+    const barangayCentroid = ANGELES_CITY_BARANGAYS.find(b => b.canonical === form.barangay) ?? null
     const salaryMin = Number(form.salaryMin) || 0
     const salaryMax = Number(form.salaryMax) || 0
     const toList = (value: string) =>
@@ -82,9 +85,10 @@ export default function EmployerPostJob() {
         employmentType: form.employmentType,
         workArrangement: form.workArrangement,
         experienceLevel: form.experienceLevel,
-        location: form.location,
+        location: form.barangay ? `Brgy. ${form.barangay}, Angeles City, Pampanga` : form.location,
         city: 'Angeles City',
         province: 'Pampanga',
+        barangay: form.barangay || null,
         address: form.location,
         salary: salaryMin && salaryMax
           ? `₱${salaryMin.toLocaleString()} - ₱${salaryMax.toLocaleString()}`
@@ -93,9 +97,9 @@ export default function EmployerPostJob() {
         salaryMax: salaryMax || null,
         openings: Number(form.openings) || 1,
         applicationDeadline: form.deadline || null,
-        lat: DEFAULT_MAP_CENTER[0],
-        lng: DEFAULT_MAP_CENTER[1],
-        coordinateSource: 'city-centroid',
+        lat: barangayCentroid?.lat ?? null,
+        lng: barangayCentroid?.lng ?? null,
+        coordinateSource: barangayCentroid ? 'barangay-centroid' : null,
         status: isDraft ? 'draft' : 'active',
       }
 
@@ -148,7 +152,7 @@ export default function EmployerPostJob() {
           <h2 className="text-lg font-bold text-gray-900 mb-2">{editing ? 'Job Updated' : 'Job Posted Successfully!'}</h2>
           <p className="text-sm text-gray-500 mb-6">Your job listing is now live and visible to job seekers.</p>
           <div className="flex gap-3">
-            <button onClick={() => { setSubmitted(false); setForm({ title: '', category: CATEGORIES[0]?.name ?? '', description: '', requirements: '', employmentType: 'Full-time', workArrangement: 'On-site', experienceLevel: 'Entry level', location: '', salaryMin: '', salaryMax: '', openings: '1', deadline: '', requiredSkills: '' }) }} style={{ border: '1px solid #e5e7eb', borderRadius: 6 }} className="flex-1 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <button onClick={() => { setSubmitted(false); setForm({ title: '', category: CATEGORIES[0]?.name ?? '', description: '', requirements: '', employmentType: 'Full-time', workArrangement: 'On-site', experienceLevel: 'Entry level', location: '', salaryMin: '', salaryMax: '', openings: '1', deadline: '', requiredSkills: '', barangay: '' }) }} style={{ border: '1px solid #e5e7eb', borderRadius: 6 }} className="flex-1 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
               Post Another
             </button>
             <button onClick={() => navigate('employer-jobs')} style={{ background: '#0f2044', color: '#fff', borderRadius: 6 }} className="flex-1 py-2.5 text-sm font-semibold hover:opacity-90">
@@ -256,8 +260,22 @@ export default function EmployerPostJob() {
 
           {/* Location */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Location <span className="text-red-500">*</span></label>
-            <input {...field('location')} style={inputStyle(errors.location)} className={baseInput} placeholder="e.g. Angeles City, Pampanga" />
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Barangay <span className="text-red-500">*</span></label>
+            <select
+              {...field('barangay')}
+              style={inputStyle(errors.barangay)}
+              className={baseInput + ' bg-white'}
+            >
+              <option value="">Select a barangay</option>
+              {ANGELES_CITY_BARANGAYS.map(b => (
+                <option key={b.canonical} value={b.canonical}>{b.canonical}</option>
+              ))}
+            </select>
+            {errors.barangay && <p className="text-xs text-red-500 mt-1">{errors.barangay}</p>}
+            <p className="text-xs text-gray-500 mt-1">Places the job on the map and drives travel distance for applicants.</p>
+
+            <label className="block text-sm font-medium text-gray-700 mb-1.5 mt-4">Street address or landmark <span className="text-red-500">*</span></label>
+            <input {...field('location')} style={inputStyle(errors.location)} className={baseInput} placeholder="e.g. MacArthur Highway, near Marquee Mall" />
             {errors.location && <p className="text-xs text-red-500 mt-1">{errors.location}</p>}
           </div>
 

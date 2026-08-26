@@ -244,6 +244,8 @@ function assertPublishable(job) {
   if (!job.requiredSkills.length) fields.requiredSkills = 'At least one required skill is required.'
   if (job.city.toLowerCase() !== 'angeles city') fields.city = 'Only Angeles City jobs are supported.'
   if (job.lat == null || job.lng == null || !job.coordinateSource) fields.location = 'Verified coordinates are required.'
+  if (!job.barangay) fields.barangay = 'Select the barangay where the work is located.'
+  if (job.coordinateSource === 'city-centroid') fields.barangay = 'A city-wide location is not specific enough to publish.'
   if (job.salaryMin != null && job.salaryMax != null && job.salaryMin > job.salaryMax) fields.salaryMax = 'Must be at least the minimum salary.'
   if (Object.keys(fields).length) throw new ApiError(400, 'JOB_NOT_PUBLISHABLE', 'Complete the job before publishing.', fields)
 }
