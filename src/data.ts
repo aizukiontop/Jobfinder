@@ -33,12 +33,26 @@ export const VERIFIED_JOBS: Job[] = verifiedJobs as Job[]
 export const SAMPLE_JOBS: Job[] = VERIFIED_JOBS
 
 export const CATEGORIES = [
-  { name: 'IT & Software' },
-  { name: 'Sales & Marketing' },
-  { name: 'Customer Service' },
-  { name: 'Healthcare' },
   { name: 'Accounting' },
   { name: 'Administrative' },
+  { name: 'Construction' },
+  { name: 'Customer Service' },
+  { name: 'Education & Training' },
+  { name: 'Engineering' },
+  { name: 'Finance & Banking' },
+  { name: 'Food & Beverage' },
+  { name: 'Healthcare' },
+  { name: 'Hospitality & Tourism' },
+  { name: 'Human Resources' },
+  { name: 'IT & Software' },
+  { name: 'Logistics & Warehousing' },
+  { name: 'Manufacturing' },
+  { name: 'Marketing & Creative' },
+  { name: 'Retail' },
+  { name: 'Sales & Marketing' },
+  { name: 'Security & Safety' },
+  { name: 'Skilled Trades' },
+  { name: 'Other' },
 ]
 
 export const EMPLOYMENT_TYPES = ['Full-time', 'Part-time', 'Contract', 'Temporary']

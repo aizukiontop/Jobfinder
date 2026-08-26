@@ -142,7 +142,7 @@ export default function EmployerDashboard() {
                   <tr>
                     <td colSpan={6} className="px-5 py-10 text-center text-gray-400 text-sm">
                       No job posts yet.{' '}
-                      <button onClick={() => navigate('employer-post')} style={{ color: '#16a34a' }} className="font-medium hover:underline">Post your first job</button>
+                      <button onClick={() => navigate('employer-post', null)} style={{ color: '#16a34a' }} className="font-medium hover:underline">Post your first job</button>
                     </td>
                   </tr>
                 )}
@@ -154,7 +154,7 @@ export default function EmployerDashboard() {
         {/* Quick actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
           <button
-            onClick={() => navigate('employer-post')}
+            onClick={() => navigate('employer-post', null)}
             style={{ background: '#0f2044', color: '#fff', borderRadius: 10 }}
             className="p-5 text-left hover:opacity-90 transition-opacity"
           >

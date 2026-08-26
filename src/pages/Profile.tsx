@@ -136,7 +136,7 @@ export default function Profile() {
       setPhotoError(
         err instanceof ApiRequestError
           ? err.message
-          : 'The photo could not be uploaded. Please try again.'
+          : 'The photo could not be uploaded. It must be a PNG, JPEG or WebP under 5MB.'
       )
     }
   }
@@ -223,6 +223,9 @@ export default function Profile() {
                   </button>
                 )}
                 <input ref={photoInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handlePhotoUpload} className="hidden" />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">PNG, JPEG or WebP, up to 5MB</p>
+              <div className="hidden">
               </div>
               {photoError && <p className="text-xs text-red-500 mt-2">{photoError}</p>}
             </div>

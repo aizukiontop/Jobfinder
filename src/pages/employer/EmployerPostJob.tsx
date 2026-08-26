@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useApp } from '../../context'
-import { ApiRequestError, createEmployerJob } from '../../lib/api'
+import { ApiRequestError, createEmployerJob, updateEmployerJob as patchEmployerJob } from '../../lib/api'
 import { DEFAULT_MAP_CENTER } from '../../config/geo'
 import type { EmployerJob } from '../../types'
 import { CATEGORIES, EMPLOYMENT_TYPES, EXPERIENCE_LEVELS } from '../../data'
@@ -10,22 +10,23 @@ const WORK_SETUPS = ['On-site', 'Hybrid', 'Remote']
 const SPLIT_PATTERN = /[\n,]/
 
 export default function EmployerPostJob() {
-  const { employer, addEmployerJob, reloadJobs, navigate } = useApp()
+  const { employer, addEmployerJob, reloadJobs, navigate, employerJobs, selectedJobId, refreshAccountData } = useApp()
+  const editing = employerJobs.find(j => j.id === selectedJobId) ?? null
 
   const [form, setForm] = useState({
-    title: '',
-    category: CATEGORIES[0]?.name ?? 'IT & Software',
-    description: '',
-    requirements: '',
-    employmentType: 'Full-time',
-    workArrangement: 'On-site',
-    experienceLevel: 'Entry level',
-    location: '',
-    salaryMin: '',
-    salaryMax: '',
-    openings: '1',
-    deadline: '',
-    requiredSkills: '',
+    title: editing?.title ?? '',
+    category: editing?.category ?? CATEGORIES[0]?.name ?? 'IT & Software',
+    description: editing?.description ?? '',
+    requirements: editing?.requirements ?? '',
+    employmentType: editing?.employmentType ?? 'Full-time',
+    workArrangement: editing?.workArrangement ?? 'On-site',
+    experienceLevel: editing?.experienceLevel ?? 'Entry level',
+    location: editing?.location ?? '',
+    salaryMin: editing?.salaryMin ? String(editing.salaryMin) : '',
+    salaryMax: editing?.salaryMax ? String(editing.salaryMax) : '',
+    openings: editing?.openings ? String(editing.openings) : '1',
+    deadline: editing?.deadline ? String(editing.deadline).slice(0, 10) : '',
+    requiredSkills: (editing?.requiredSkills ?? []).join(', '),
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
@@ -46,6 +47,13 @@ export default function EmployerPostJob() {
     if (!form.requirements.trim()) e.requirements = 'Requirements are required.'
     if (!form.location.trim()) e.location = 'Location is required.'
     if (!form.requiredSkills.trim()) e.requiredSkills = 'At least one required skill is needed.'
+    if (form.deadline) {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      if (Date.parse(form.deadline) < today.getTime()) {
+        e.deadline = 'The deadline cannot be earlier than today.'
+      }
+    }
     if (!form.salaryMin || isNaN(Number(form.salaryMin))) e.salaryMin = 'Enter a valid minimum salary.'
     if (!form.salaryMax || isNaN(Number(form.salaryMax))) e.salaryMax = 'Enter a valid maximum salary.'
     if (!form.openings || isNaN(Number(form.openings)) || Number(form.openings) < 1) e.openings = 'Enter a valid number of openings.'
@@ -65,7 +73,7 @@ export default function EmployerPostJob() {
 
     setSubmitting(true)
     try {
-      const job = await createEmployerJob({
+      const payload = {
         title: form.title,
         category: form.category,
         description: form.description,
@@ -89,7 +97,17 @@ export default function EmployerPostJob() {
         lng: DEFAULT_MAP_CENTER[1],
         coordinateSource: 'city-centroid',
         status: isDraft ? 'draft' : 'active',
-      })
+      }
+
+      if (editing) {
+        await patchEmployerJob(editing.id, payload)
+        await refreshAccountData()
+        if (!isDraft) await reloadJobs()
+        setSubmitted(true)
+        return
+      }
+
+      const job = await createEmployerJob(payload)
 
       addEmployerJob({
         ...(job as unknown as EmployerJob),
@@ -127,7 +145,7 @@ export default function EmployerPostJob() {
               <polyline points="20 6 9 17 4 12"/>
             </svg>
           </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">Job Posted Successfully!</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-2">{editing ? 'Job Updated' : 'Job Posted Successfully!'}</h2>
           <p className="text-sm text-gray-500 mb-6">Your job listing is now live and visible to job seekers.</p>
           <div className="flex gap-3">
             <button onClick={() => { setSubmitted(false); setForm({ title: '', category: CATEGORIES[0]?.name ?? '', description: '', requirements: '', employmentType: 'Full-time', workArrangement: 'On-site', experienceLevel: 'Entry level', location: '', salaryMin: '', salaryMax: '', openings: '1', deadline: '', requiredSkills: '' }) }} style={{ border: '1px solid #e5e7eb', borderRadius: 6 }} className="flex-1 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
@@ -264,7 +282,14 @@ export default function EmployerPostJob() {
             {/* Deadline */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Application Deadline</label>
-              <input {...field('deadline')} type="date" style={{ border: '1px solid #d1d5db', borderRadius: 6 }} className={baseInput} />
+              <input
+                {...field('deadline')}
+                type="date"
+                min={new Date().toISOString().slice(0, 10)}
+                style={inputStyle(errors.deadline)}
+                className={baseInput}
+              />
+              {errors.deadline && <p className="text-xs text-red-500 mt-1">{errors.deadline}</p>}
             </div>
           </div>
 
@@ -284,7 +309,7 @@ export default function EmployerPostJob() {
               style={{ background: '#0f2044', color: '#fff', borderRadius: 6 }}
               className="flex-1 py-2.5 text-sm font-semibold hover:opacity-90 disabled:opacity-60"
             >
-              {submitting ? 'Posting…' : 'Post Job'}
+              {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Post Job'}
             </button>
           </div>
         </div>

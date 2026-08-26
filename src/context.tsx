@@ -580,6 +580,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   function navigate(newPage: Page, jobId?: string | null) {
     if (LIVE_PAGES.has(newPage)) void refreshAccountData()
+    // Reaching the post form without naming a job means composing a new one,
+    // never editing whichever job happened to be selected before.
+    if (newPage === 'employer-post' && jobId === undefined) jobId = null
     setPrevPage(page)
     setPage(newPage)
     if (jobId !== undefined) setSelectedJobId(jobId ?? null)

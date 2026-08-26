@@ -74,6 +74,15 @@ const applicationSchema = z.object({
   useProfileResume: z.enum(['true', 'false']).optional().default('false'),
 })
 
+function isNotPastDate(value) {
+  if (!value) return true
+  const parsed = Date.parse(value)
+  if (Number.isNaN(parsed)) return false
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return parsed >= today.getTime()
+}
+
 const jobInputSchema = z.object({
   title: z.string().trim().max(180).optional().default(''),
   category: z.string().trim().max(120).optional().default(''),
@@ -95,7 +104,8 @@ const jobInputSchema = z.object({
   salaryMax: z.number().int().nonnegative().nullable().optional().default(null),
   salary: z.string().trim().max(160).optional().default('Negotiable'),
   openings: z.number().int().positive().max(10_000).optional().default(1),
-  applicationDeadline: z.string().trim().max(40).nullable().optional().default(null),
+  applicationDeadline: z.string().trim().max(40).nullable().optional().default(null)
+    .refine(isNotPastDate, { message: 'The deadline cannot be earlier than today.' }),
   lat: z.number().min(-90).max(90).nullable().optional().default(null),
   lng: z.number().min(-180).max(180).nullable().optional().default(null),
   coordinateSource: z.enum(['exact-address', 'barangay-centroid', 'city-centroid']).nullable().optional().default(null),
@@ -601,7 +611,7 @@ export function createApp(config) {
 
   const photoUpload = multer({
     storage: multer.diskStorage({ destination: tempDir, filename: (_req, _file, cb) => cb(null, randomUUID()) }),
-    limits: { fileSize: 2 * 1024 * 1024, files: 1, fields: 0 },
+    limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 0 },
   })
 
   const PHOTO_TYPES = new Map([

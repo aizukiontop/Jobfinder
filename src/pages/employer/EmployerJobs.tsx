@@ -45,7 +45,7 @@ export default function EmployerJobs() {
             <p className="text-sm text-gray-500 mt-0.5">{employerJobs.length} total job posts</p>
           </div>
           <button
-            onClick={() => navigate('employer-post')}
+            onClick={() => navigate('employer-post', null)}
             style={{ background: '#0f2044', color: '#fff', borderRadius: 6 }}
             className="px-4 py-2 text-sm font-semibold hover:opacity-90 flex items-center gap-2"
           >
@@ -148,20 +148,38 @@ export default function EmployerJobs() {
                               Publish
                             </button>
                           ) : job.status === 'active' ? (
-                            <button
-                              onClick={() => setConfirmClose(job.id)}
-                              className="text-xs font-medium text-red-500 hover:underline"
-                            >
-                              Close
-                            </button>
+                            <>
+                              <button
+                                onClick={() => navigate('employer-post', job.id)}
+                                style={{ color: '#0f2044' }}
+                                className="text-xs font-medium hover:underline"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => setConfirmClose(job.id)}
+                                className="text-xs font-medium text-red-500 hover:underline"
+                              >
+                                Close
+                              </button>
+                            </>
                           ) : (
-                            <button
-                              onClick={() => updateEmployerJob(job.id, { status: 'active' })}
-                              style={{ color: '#16a34a' }}
-                              className="text-xs font-medium hover:underline"
-                            >
-                              Reopen
-                            </button>
+                            <>
+                              <button
+                                onClick={() => navigate('employer-post', job.id)}
+                                style={{ color: '#0f2044' }}
+                                className="text-xs font-medium hover:underline"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => updateEmployerJob(job.id, { status: 'active' })}
+                                style={{ color: '#16a34a' }}
+                                className="text-xs font-medium hover:underline"
+                              >
+                                Reopen
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>
@@ -172,7 +190,7 @@ export default function EmployerJobs() {
                   <tr>
                     <td colSpan={6} className="px-5 py-12 text-center text-gray-400 text-sm">
                       No jobs found.{' '}
-                      <button onClick={() => navigate('employer-post')} style={{ color: '#16a34a' }} className="font-medium hover:underline">Post a job</button>
+                      <button onClick={() => navigate('employer-post', null)} style={{ color: '#16a34a' }} className="font-medium hover:underline">Post a job</button>
                     </td>
                   </tr>
                 )}
