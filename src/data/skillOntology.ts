@@ -43,15 +43,28 @@ export const SKILL_NODES: SkillNode[] = [
   { id: 'vue', label: 'Vue.js', synonyms: ['vue', 'vuejs', 'vue3', 'vue js'], category: 'IT & Software' },
   { id: 'angular', label: 'Angular', synonyms: ['angularjs', 'angular js'], category: 'IT & Software' },
   { id: 'react_native', label: 'React Native', synonyms: ['react native', 'rn'], category: 'IT & Software' },
+  { id: 'nextjs', label: 'Next.js', synonyms: ['next', 'next.js', 'nextjs'], category: 'IT & Software' },
   { id: 'figma', label: 'Figma', synonyms: ['figma'], category: 'IT & Software' },
   { id: 'accessibility', label: 'Accessibility', synonyms: ['wcag', 'a11y', 'web accessibility'], category: 'IT & Software' },
   { id: 'design_systems', label: 'Design Systems', synonyms: ['design system', 'component library', 'ui library'], category: 'IT & Software' },
+
+  { id: 'game_dev', label: 'Game Development', synonyms: ['game development', 'game developer', 'game programming', 'gamedev', 'game design'], category: 'IT & Software' },
+  { id: 'unity', label: 'Unity', synonyms: ['unity', 'unity3d', 'unity 3d', 'unity engine'], category: 'IT & Software' },
+  { id: 'unreal', label: 'Unreal Engine', synonyms: ['unreal', 'unreal engine', 'ue4', 'ue5'], category: 'IT & Software' },
+  { id: 'cpp', label: 'C++', synonyms: ['c++', 'cpp', 'c plus plus'], category: 'IT & Software' },
+  { id: 'csharp', label: 'C#', synonyms: ['c#', 'csharp', 'c sharp'], category: 'IT & Software' },
+  { id: 'luau', label: 'Luau', synonyms: ['luau', 'lua', 'roblox scripting'], category: 'IT & Software' },
+
+  { id: 'data_analytics', label: 'Data Analytics', synonyms: ['data analytics', 'data analysis', 'data analyst', 'data science'], category: 'IT & Software' },
+  { id: 'ai_ml', label: 'Artificial Intelligence', synonyms: ['ai', 'artificial intelligence', 'machine learning', 'ml', 'deep learning'], category: 'IT & Software' },
 
   { id: 'backend_dev', label: 'Backend Development', synonyms: ['backend', 'server-side', 'server side'], category: 'IT & Software' },
   { id: 'nodejs', label: 'Node.js', synonyms: ['node', 'nodejs', 'node js'], category: 'IT & Software' },
   { id: 'python', label: 'Python', synonyms: ['python3', 'py'], category: 'IT & Software' },
   { id: 'java', label: 'Java', synonyms: ['java'], category: 'IT & Software' },
   { id: 'php', label: 'PHP', synonyms: ['php', 'laravel'], category: 'IT & Software' },
+  { id: 'dotnet', label: '.NET', synonyms: ['.net', 'dotnet', 'asp.net', 'aspnet', '.net core', 'asp.net core'], category: 'IT & Software' },
+  { id: 'express', label: 'Express.js', synonyms: ['express', 'expressjs', 'express.js'], category: 'IT & Software' },
   { id: 'rest_api', label: 'REST API', synonyms: ['rest', 'restful api', 'api development', 'api design'], category: 'IT & Software' },
   { id: 'microservices', label: 'Microservices', synonyms: ['microservices', 'micro-services'], category: 'IT & Software' },
 
@@ -87,7 +100,7 @@ export const SKILL_NODES: SkillNode[] = [
   { id: 'social_media', label: 'Social Media', synonyms: ['social media management', 'social media marketing', 'smm'], category: 'Sales & Marketing' },
   { id: 'content_creation', label: 'Content Creation', synonyms: ['content creation', 'content writing', 'copywriting', 'content marketing'], category: 'Sales & Marketing' },
   { id: 'seo', label: 'SEO', synonyms: ['seo', 'search engine optimization', 'sem'], category: 'Sales & Marketing' },
-  { id: 'analytics', label: 'Analytics', synonyms: ['analytics', 'google analytics', 'data analytics', 'marketing analytics'], category: 'Sales & Marketing' },
+  { id: 'analytics', label: 'Marketing Analytics', synonyms: ['analytics', 'google analytics', 'marketing analytics', 'web analytics', 'campaign analytics'], category: 'Sales & Marketing' },
   { id: 'campaign_management', label: 'Campaign Management', synonyms: ['campaign management', 'campaign planning'], category: 'Sales & Marketing' },
 
   { id: 'sales', label: 'Sales', synonyms: ['sales', 'selling', 'b2b sales', 'b2c sales'], category: 'Sales & Marketing' },
@@ -96,7 +109,7 @@ export const SKILL_NODES: SkillNode[] = [
 
   { id: 'graphic_design', label: 'Graphic Design', synonyms: ['graphic design', 'visual design', 'graphics'], category: 'Sales & Marketing' },
   { id: 'photoshop', label: 'Adobe Photoshop', synonyms: ['photoshop', 'adobe photoshop', 'ps'], category: 'Sales & Marketing' },
-  { id: 'illustrator', label: 'Adobe Illustrator', synonyms: ['illustrator', 'adobe illustrator', 'ai'], category: 'Sales & Marketing' },
+  { id: 'illustrator', label: 'Adobe Illustrator', synonyms: ['illustrator', 'adobe illustrator'], category: 'Sales & Marketing' },
   { id: 'canva', label: 'Canva', synonyms: ['canva'], category: 'Sales & Marketing' },
   { id: 'typography', label: 'Typography', synonyms: ['typography', 'type design'], category: 'Sales & Marketing' },
   { id: 'branding', label: 'Branding', synonyms: ['branding', 'brand identity', 'brand management'], category: 'Sales & Marketing' },
@@ -106,6 +119,7 @@ export const SKILL_NODES: SkillNode[] = [
     'video editing', 'video editor', 'video production', 'video production specialist',
     'video creation', 'film editing', 'video content creation', 'videography',
   ], category: 'Sales & Marketing' },
+  { id: 'premiere', label: 'Adobe Premiere', synonyms: ['adobe premiere', 'premiere', 'premiere pro', 'adobe premiere pro'], category: 'Sales & Marketing' },
   { id: 'image_editing', label: 'Image Editing', synonyms: [
     'image editing', 'photo editing', 'photo retouching', 'digital photo editing',
     'image manipulation', 'photo manipulation',
@@ -184,16 +198,40 @@ export const SKILL_EDGES: SkillEdge[] = [
   { from: 'javascript', to: 'nodejs', type: 'related' },
 
   // React family
+  { from: 'react', to: 'nextjs', type: 'narrower' },
   { from: 'react', to: 'react_native', type: 'related' },
   { from: 'react', to: 'vue', type: 'related' },
   { from: 'react', to: 'angular', type: 'related' },
+
+  // Game development — the engine and its language carry the match,
+  // not the fact that a language is involved at all.
+  { from: 'programming', to: 'game_dev', type: 'narrower' },
+  { from: 'game_dev', to: 'unity', type: 'narrower' },
+  { from: 'game_dev', to: 'unreal', type: 'narrower' },
+  { from: 'game_dev', to: 'cpp', type: 'narrower' },
+  { from: 'game_dev', to: 'csharp', type: 'narrower' },
+  { from: 'game_dev', to: 'luau', type: 'narrower' },
+  { from: 'unity', to: 'csharp', type: 'related' },
+  { from: 'unreal', to: 'cpp', type: 'related' },
+  { from: 'cpp', to: 'csharp', type: 'related' },
+
+  // Data analytics — distinct from the marketing sense of "analytics", and
+  // anchored to the data it works on rather than to programming in general.
+  { from: 'databases', to: 'data_analytics', type: 'related' },
+  { from: 'data_analytics', to: 'ai_ml', type: 'narrower' },
+  { from: 'data_analytics', to: 'sql', type: 'related' },
+  { from: 'data_analytics', to: 'python', type: 'related' },
+  { from: 'ai_ml', to: 'python', type: 'related' },
 
   // Backend
   { from: 'backend_dev', to: 'nodejs', type: 'narrower' },
   { from: 'backend_dev', to: 'python', type: 'narrower' },
   { from: 'backend_dev', to: 'java', type: 'narrower' },
   { from: 'backend_dev', to: 'php', type: 'narrower' },
+  { from: 'backend_dev', to: 'dotnet', type: 'narrower' },
   { from: 'backend_dev', to: 'rest_api', type: 'narrower' },
+  { from: 'dotnet', to: 'csharp', type: 'related' },
+  { from: 'nodejs', to: 'express', type: 'narrower' },
   { from: 'backend_dev', to: 'microservices', type: 'narrower' },
 
   // REST/microservices
@@ -339,5 +377,6 @@ export const SKILL_EDGES: SkillEdge[] = [
   { from: 'graphic_design', to: 'image_editing', type: 'narrower' },
   { from: 'photoshop', to: 'image_editing', type: 'related' },
   { from: 'graphic_design', to: 'video_editing', type: 'related' },
+  { from: 'video_editing', to: 'premiere', type: 'narrower' },
   { from: 'content_creation', to: 'video_editing', type: 'related' },
 ]

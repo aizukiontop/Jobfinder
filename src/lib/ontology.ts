@@ -27,7 +27,7 @@ for (const edge of SKILL_EDGES) {
 const SYNONYM_INDEX = new Map<string, string>() // normalised label → nodeId
 
 function normalize(s: string): string {
-  return s.toLowerCase().trim().replace(/[^a-z0-9/. ]/g, '').replace(/\s+/g, ' ')
+  return s.toLowerCase().trim().replace(/[^a-z0-9/.+# ]/g, '').replace(/\s+/g, ' ')
 }
 
 for (const node of SKILL_NODES) {
@@ -41,12 +41,24 @@ for (const node of SKILL_NODES) {
 /** Resolve a free-text skill string to an ontology node id, or null. */
 export function resolveSkill(skill: string): string | null {
   const key = normalize(skill)
+  if (!key) return null
   if (SYNONYM_INDEX.has(key)) return SYNONYM_INDEX.get(key)!
-  // Partial prefix match — "React Native Developer" → react_native
+
+  // Partial match — "React Native Developer" → react_native. The extra word
+  // must start a new word, so "c" cannot reach "coding", and the longest
+  // synonym wins so the most specific node is chosen rather than whichever
+  // one happens to be indexed first.
+  let matchedSynonym = ''
+  let matchedId: string | null = null
   for (const [synonym, id] of SYNONYM_INDEX) {
-    if (key.startsWith(synonym) || synonym.startsWith(key)) return id
+    const [longer, shorter] = key.length >= synonym.length ? [key, synonym] : [synonym, key]
+    if (!longer.startsWith(`${shorter} `)) continue
+    if (synonym.length > matchedSynonym.length) {
+      matchedSynonym = synonym
+      matchedId = id
+    }
   }
-  return null
+  return matchedId
 }
 
 // ─── BFS shortest-path cache ──────────────────────────────────────────────────

@@ -55,10 +55,8 @@ export default function JobDetail() {
   const [distanceScore, setDistanceScore] = useState<number>(0)
   useEffect(() => {
     if (!user || !job) { setMatchScore(0); return }
-    const lat = user.lat ?? undefined
-    const lng = user.lng ?? undefined
-    calculateMatchScore(job, lat, lng).then(s => setMatchScore(Math.round(s * 100)))
-    calculateDistanceScore(job, lat, lng).then(s => setDistanceScore(Math.round(s * 100)))
+    calculateMatchScore(job).then(s => setMatchScore(Math.round(s * 100)))
+    calculateDistanceScore(job).then(s => setDistanceScore(Math.round(s * 100)))
   }, [user, job, calculateMatchScore])
 
   return (

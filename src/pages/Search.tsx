@@ -75,7 +75,7 @@ const EXPERIENCE_FILTERS = [
 
 export default function Search() {
   const { allJobs, navigate, toggleSave, savedJobIds, searchQuery, setSearchQuery,
-          calculateMatchScore, user, getSkillBreakdown } = useApp()
+          calculateMatchScore, user, getSkillBreakdown, matchLat, matchLng } = useApp()
   const [localQuery, setLocalQuery] = useState(searchQuery)
   const [dateFilter, setDateFilter] = useState('Any time')
   const [empTypes, setEmpTypes] = useState<string[]>([])
@@ -186,9 +186,6 @@ export default function Search() {
   const computeScores = useCallback(async () => {
     if (!user) { setMatchScores({}); return }
 
-    const lat = userInsideCity === true ? userLat : null
-    const lng = userInsideCity === true ? userLng : null
-
     setScoresLoading(true)
     const next: Record<string, number> = {}
 
@@ -196,18 +193,13 @@ export default function Search() {
     // Promise.all just queues microtasks; road graph is cached after first load.
     await Promise.all(
       filtered.map(async job => {
-        const score = await calculateMatchScore(
-          job,
-          lat ?? undefined,
-          lng ?? undefined
-        )
-        next[job.id] = score
+        next[job.id] = await calculateMatchScore(job)
       })
     )
 
     setMatchScores(next)
     setScoresLoading(false)
-  }, [filtered, user, userInsideCity, userLat, userLng, calculateMatchScore])
+  }, [filtered, user, calculateMatchScore])
 
   useEffect(() => { computeScores() }, [computeScores])
 
@@ -690,8 +682,8 @@ export default function Search() {
                 jobs={sorted}
                 selectedJobId={selectedJobId}
                 onSelectJob={id => setSelectedJobId(id === selectedJobId ? null : id)}
-                userLat={userInsideCity === true ? userLat : null}
-                userLng={userInsideCity === true ? userLng : null}
+                userLat={matchLat}
+                userLng={matchLng}
                 onMapClick={pinMode ? handleMapClick : null}
                 pinMode={pinMode}
                 minHeight={mapExpanded ? 400 : 0}

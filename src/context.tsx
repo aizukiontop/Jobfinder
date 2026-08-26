@@ -247,6 +247,8 @@ interface AppState {
   userLat: number | null
   userLng: number | null
   userInsideCity: boolean | null
+  matchLat: number | null
+  matchLng: number | null
   locMode: 'gps' | 'pin'
   setUserLocation: (
     lat: number,
@@ -289,8 +291,8 @@ interface AppState {
   /** Composite MatchScore = 0.70*S(a,j) + 0.30*G(a,j). */
   calculateMatchScore: (
     job: Job,
-    userLat?: number,
-    userLng?: number
+    userLat?: number | null,
+    userLng?: number | null
   ) => Promise<number>
 }
 
@@ -336,6 +338,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [userLng, setUserLng] = useState<number | null>(null)
   const [userInsideCity, setUserInsideCity] = useState<boolean | null>(null)
   const [locMode, setLocMode] = useState<'gps' | 'pin'>('gps')
+
+  const matchLat = userInsideCity === true && userLat != null ? userLat : user?.lat ?? null
+  const matchLng = userInsideCity === true && userLng != null ? userLng : user?.lng ?? null
 
   const loadJobs = useCallback(async (signal?: AbortSignal) => {
     setJobsLoading(true)
@@ -656,8 +661,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const calculateDistanceScore = async (
     job: Job,
-    lat?: number,
-    lng?: number
+    lat: number | null | undefined = matchLat,
+    lng: number | null | undefined = matchLng
   ): Promise<number> => {
     if (lat == null || lng == null || !job.lat || !job.lng) return 0
     return computeDijkstraDistanceScore(lat, lng, job.lat, job.lng)
@@ -665,8 +670,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const calculateMatchScore = async (
     job: Job,
-    lat?: number,
-    lng?: number
+    lat: number | null | undefined = matchLat,
+    lng: number | null | undefined = matchLng
   ): Promise<number> => {
     if (!user) return 0
 
@@ -719,6 +724,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         userLat,
         userLng,
         userInsideCity,
+        matchLat,
+        matchLng,
         locMode,
         setUserLocation,
         clearUserLocation,
