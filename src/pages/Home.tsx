@@ -54,6 +54,7 @@ function ChevronRightIcon() {
 export default function Home() {
   const { allJobs, navigate, setSearchQuery, user, calculateMatchScore } = useApp()
   const [query, setQuery] = useState('')
+  const [showAllCategories, setShowAllCategories] = useState(false)
 
   const handleSearch = () => {
     setSearchQuery(query)
@@ -81,10 +82,12 @@ export default function Home() {
     })
   }, [user, allJobs, calculateMatchScore])
 
-  const categoryCounts = CATEGORIES.map(cat => ({
-    ...cat,
-    count: allJobs.filter(j => j.category === cat.name).length,
-  }))
+  const categoryCounts = CATEGORIES
+    .map(cat => ({ ...cat, count: allJobs.filter(j => j.category === cat.name).length }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+
+  const shownCategories = showAllCategories ? categoryCounts : categoryCounts.slice(0, 5)
+  const hiddenCategoryCount = categoryCounts.length - 5
 
   return (
     <div>
@@ -247,7 +250,7 @@ export default function Home() {
                 </h3>
 
                 <div className="space-y-2">
-                  {categoryCounts.map(cat => (
+                  {shownCategories.map(cat => (
                     <button
                       key={cat.name}
                       onClick={() => {
@@ -277,6 +280,18 @@ export default function Home() {
                     </button>
                   ))}
                 </div>
+
+                {hiddenCategoryCount > 0 && (
+                  <button
+                    onClick={() => setShowAllCategories(v => !v)}
+                    style={{ color: '#16a34a' }}
+                    className="w-full mt-3 text-xs font-medium hover:underline text-left"
+                  >
+                    {showAllCategories
+                      ? 'Show fewer categories'
+                      : `Show ${hiddenCategoryCount} more categories`}
+                  </button>
+                )}
 
                 <button
                   onClick={() => navigate('search')}
