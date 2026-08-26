@@ -86,6 +86,11 @@ const LEGACY_STORAGE_KEYS = [
   'jf_data_version',
 ] as const
 
+const TRACKING_PARAMS = new Set([
+  'fbclid', 'gclid', 'gbraid', 'wbraid', 'msclkid', 'dclid',
+  'twclid', 'igshid', 'mc_cid', 'mc_eid', 'ref', 'ref_src', '_ga',
+])
+
 const STORAGE_CLEANUP_MARKER = 'jobfinder_server_backed_cleanup_v1'
 
 function clearLegacyBrowserDataOnce() {
@@ -345,10 +350,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const reloadJobs = useCallback(() => loadJobs(), [loadJobs])
 
   useEffect(() => {
-    if (initialReset && typeof window !== 'undefined') {
-      const url = new URL(window.location.href)
-      url.searchParams.delete('reset')
-      window.history.replaceState({}, '', url.pathname + url.search)
+    if (typeof window === 'undefined') return
+
+    const url = new URL(window.location.href)
+    const before = url.search
+
+    if (initialReset) url.searchParams.delete('reset')
+
+    // Facebook, Google and newsletter tools append their own tracking
+    // parameters when a link is opened. They mean nothing to the app and
+    // turn a short address into an unreadable one.
+    for (const key of [...url.searchParams.keys()]) {
+      if (TRACKING_PARAMS.has(key) || key.startsWith('utm_')) {
+        url.searchParams.delete(key)
+      }
+    }
+
+    if (url.search !== before) {
+      window.history.replaceState({}, '', url.pathname + url.search + url.hash)
     }
   }, [initialReset])
 
