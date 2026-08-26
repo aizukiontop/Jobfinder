@@ -31,9 +31,10 @@ export function createMailer(config = {}) {
   }
 }
 
-export function passwordResetEmail(resetUrl, expiryMinutes) {
+export function passwordResetEmail(resetUrl, expiryMinutes, accountLabel = '') {
+  const forAccount = accountLabel ? ` for your ${accountLabel} account` : ''
   const text = [
-    'We received a request to reset your JobFinder password.',
+    `We received a request to reset your JobFinder password${forAccount}.`,
     '',
     `Open this link to choose a new password: ${resetUrl}`,
     '',
@@ -44,7 +45,7 @@ export function passwordResetEmail(resetUrl, expiryMinutes) {
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;color:#111827;line-height:1.5">
       <h2 style="margin:0 0 16px">Reset your JobFinder password</h2>
-      <p>We received a request to reset your JobFinder password.</p>
+      <p>We received a request to reset your JobFinder password${forAccount}.</p>
       <p style="margin:24px 0">
         <a href="${resetUrl}"
            style="background:#16a34a;color:#fff;border-radius:6px;padding:12px 20px;
@@ -61,5 +62,9 @@ export function passwordResetEmail(resetUrl, expiryMinutes) {
     </div>
   `.trim()
 
-  return { subject: 'Reset your JobFinder password', text, html }
+  const subject = accountLabel
+    ? `Reset your JobFinder password (${accountLabel} account)`
+    : 'Reset your JobFinder password'
+
+  return { subject, text, html }
 }

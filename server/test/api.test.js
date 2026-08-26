@@ -75,6 +75,7 @@ before(async () => {
     rememberTtlSeconds: 7200,
     secureCookies: false,
     seedOnStart: true,
+    authRateLimit: 1000,
   })
   server = createServer(api.app)
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
@@ -138,12 +139,45 @@ test('registration hashes passwords, enforces origin, and prevents duplicate ema
 
   const duplicate = await request('/api/auth/register', {
     method: 'POST', body: {
-      role: 'employer', email: 'ANA@EXAMPLE.COM', password: 'TestPass2026',
-      companyName: 'Duplicate Corp', industry: 'Retail', contactName: 'HR',
+      role: 'job-seeker', email: 'ANA@EXAMPLE.COM', password: 'TestPass2026',
+      firstName: 'Ana', lastName: 'Cruz',
     },
   })
   assert.equal(duplicate.status, 409)
   assert.equal((await json(duplicate)).error.code, 'EMAIL_IN_USE')
+})
+
+test('one email may hold both a job seeker and an employer account', async () => {
+  const seeker = await register({
+    role: 'job-seeker', email: 'both@example.com', password: 'TestPass2026', firstName: 'Cy', lastName: 'Dizon',
+  })
+  assert.equal(seeker.response.status, 201)
+
+  const employer = await register({
+    role: 'employer', email: 'BOTH@EXAMPLE.COM', password: 'TestPass2026',
+    companyName: 'Dizon Foods', industry: 'Retail', contactName: 'Cy Dizon',
+  })
+  assert.equal(employer.response.status, 201)
+  assert.notEqual(employer.data.account.id, seeker.data.account.id)
+
+  const ambiguous = await request('/api/auth/login', {
+    method: 'POST', body: { email: 'both@example.com', password: 'TestPass2026' },
+  })
+  assert.equal(ambiguous.status, 409)
+  assert.equal((await json(ambiguous)).error.code, 'ROLE_REQUIRED')
+
+  const chosen = await request('/api/auth/login', {
+    method: 'POST', body: { email: 'both@example.com', password: 'TestPass2026', role: 'employer' },
+  })
+  assert.equal(chosen.status, 200)
+  const chosenBody = await json(chosen)
+  assert.equal(chosenBody.account.role, 'employer')
+  assert.equal(chosenBody.account.id, employer.data.account.id)
+
+  const wrong = await request('/api/auth/login', {
+    method: 'POST', body: { email: 'both@example.com', password: 'NotThePassword1', role: 'employer' },
+  })
+  assert.equal(wrong.status, 401)
 })
 
 test('saved jobs are user-scoped and verified listings accept one application each', async () => {

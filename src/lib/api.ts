@@ -154,11 +154,12 @@ export function register(
 export function login(
   email: string,
   password: string,
-  rememberMe = false
+  rememberMe = false,
+  role?: 'job-seeker' | 'employer'
 ): Promise<SessionResponse> {
   return request<SessionResponse>('/auth/login', {
     method: 'POST',
-    body: { email, password, rememberMe },
+    body: { email, password, rememberMe, ...(role ? { role } : {}) },
   })
 }
 

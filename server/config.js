@@ -24,6 +24,7 @@ export function loadConfig(overrides = {}) {
     adminEmails: overrides.adminEmails ?? String(process.env.JOBFINDER_ADMIN_EMAILS ?? '')
       .split(',').map((value) => value.trim().toLowerCase()).filter(Boolean),
     resetTokenTtlSeconds: overrides.resetTokenTtlSeconds ?? positiveInteger(process.env.JOBFINDER_RESET_TTL, 1_800),
+    authRateLimit: overrides.authRateLimit ?? positiveInteger(process.env.JOBFINDER_AUTH_RATE_LIMIT, 10),
     mail: overrides.mail ?? {
       provider: process.env.JOBFINDER_MAIL_PROVIDER ?? 'none',
       apiKey: process.env.JOBFINDER_MAIL_API_KEY ?? '',

@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TEXT NOT NULL
 ) STRICT;
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email_ci ON users(email COLLATE NOCASE);
+DROP INDEX IF EXISTS uq_users_email_ci;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email_role_ci ON users(email COLLATE NOCASE, role);
 
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,

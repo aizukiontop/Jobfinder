@@ -22,24 +22,35 @@ export default function SignIn() {
   const [loading, setLoading] =
     useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const [chooseRole, setChooseRole] =
+    useState(false)
 
+  const submit = async (as?: 'job-seeker' | 'employer') => {
     setError('')
     setLoading(true)
 
     try {
-      const role = await signIn(email, password, rememberMe)
+      const role = await signIn(email, password, rememberMe, as)
       navigate(role === 'employer' ? 'employer-dashboard' : 'home')
     } catch (err) {
-      setError(
-        err instanceof ApiRequestError
-          ? err.message
-          : 'Unable to reach the JobFinder server. Please try again.'
-      )
+      if (err instanceof ApiRequestError && err.code === 'ROLE_REQUIRED') {
+        setChooseRole(true)
+      } else {
+        setChooseRole(false)
+        setError(
+          err instanceof ApiRequestError
+            ? err.message
+            : 'Unable to reach the JobFinder server. Please try again.'
+        )
+      }
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    void submit()
   }
 
   return (
@@ -98,6 +109,41 @@ export default function SignIn() {
           </div>
         )}
 
+        {chooseRole ? (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-600">
+              This email has both a job seeker and an employer account. Which one do you want to open?
+            </p>
+
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => void submit('job-seeker')}
+              style={{ background: '#0f2044', color: '#fff', borderRadius: 6 }}
+              className="w-full py-2.5 text-sm font-semibold hover:opacity-90 disabled:opacity-60"
+            >
+              Continue as job seeker
+            </button>
+
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => void submit('employer')}
+              style={{ border: '1px solid #d1d5db', borderRadius: 6 }}
+              className="w-full py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            >
+              Continue as employer
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setChooseRole(false)}
+              className="w-full text-sm text-gray-500 hover:underline"
+            >
+              Use a different email
+            </button>
+          </div>
+        ) : (
         <form
           onSubmit={handleSubmit}
           className="space-y-4"
@@ -186,6 +232,7 @@ export default function SignIn() {
               : 'Sign in'}
           </button>
         </form>
+        )}
 
       </div>
     </div>

@@ -221,7 +221,8 @@ interface AppState {
   signIn: (
     email: string,
     password: string,
-    rememberMe?: boolean
+    rememberMe?: boolean,
+    role?: 'job-seeker' | 'employer'
   ) => Promise<'job-seeker' | 'employer'>
   signUp: (
     input: api.SeekerRegistration | api.EmployerRegistration
@@ -453,8 +454,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [adoptSession])
 
   const signIn = useCallback(
-    async (email: string, password: string, rememberMe = false) => {
-      const session = await api.login(email, password, rememberMe)
+    async (email: string, password: string, rememberMe = false, role?: 'job-seeker' | 'employer') => {
+      const session = await api.login(email, password, rememberMe, role)
       await adoptSession(session)
       return session.account.role
     },

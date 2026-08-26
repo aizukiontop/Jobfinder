@@ -63,6 +63,7 @@ const loginSchema = z.object({
   email: z.string().trim().email().max(254),
   password: z.string().min(1).max(128),
   rememberMe: z.boolean().optional().default(false),
+  role: z.enum(['job-seeker', 'employer']).optional(),
 }).strict()
 
 const applicationSchema = z.object({
@@ -320,7 +321,7 @@ export function createApp(config) {
   app.use(express.json({ limit: '64kb' }))
   app.use(originGuard(config.appOrigin))
 
-  const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false })
+  const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: config.authRateLimit, standardHeaders: true, legacyHeaders: false })
   const resetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false })
   const mailer = createMailer(config.mail)
   const upload = multer({
@@ -366,8 +367,9 @@ export function createApp(config) {
   app.post('/api/auth/register', authLimiter, asyncRoute(async (req, res) => {
     const input = parse(registerSchema, req.body)
     const email = input.email.toLowerCase()
-    if (db.prepare('SELECT 1 FROM users WHERE email=?').get(email)) {
-      throw new ApiError(409, 'EMAIL_IN_USE', 'An account with this email already exists.', { email: 'Already registered.' })
+    if (db.prepare('SELECT 1 FROM users WHERE email=? AND role=?').get(email, input.role)) {
+      const label = input.role === 'employer' ? 'employer' : 'job seeker'
+      throw new ApiError(409, 'EMAIL_IN_USE', `This email already has a ${label} account.`, { email: `Already registered as a ${label}.` })
     }
     const id = randomUUID()
     const timestamp = nowIso()
@@ -394,9 +396,20 @@ export function createApp(config) {
 
   app.post('/api/auth/login', authLimiter, asyncRoute(async (req, res) => {
     const input = parse(loginSchema, req.body)
-    const user = db.prepare('SELECT id,email,password_hash,role FROM users WHERE email=? AND is_active=1').get(input.email.toLowerCase())
-    const valid = user ? await verifyPassword(input.password, user.password_hash) : (await hashPassword(input.password), false)
-    if (!valid) throw new ApiError(401, 'INVALID_CREDENTIALS', 'Invalid email or password.')
+    let accounts = db.prepare('SELECT id,email,password_hash,role FROM users WHERE email=? AND is_active=1 ORDER BY role').all(input.email.toLowerCase())
+    if (input.role) accounts = accounts.filter((account) => account.role === input.role)
+
+    const matches = []
+    for (const account of accounts) {
+      if (await verifyPassword(input.password, account.password_hash)) matches.push(account)
+    }
+    if (accounts.length === 0) await hashPassword(input.password)
+    if (matches.length === 0) throw new ApiError(401, 'INVALID_CREDENTIALS', 'Invalid email or password.')
+    if (matches.length > 1) {
+      throw new ApiError(409, 'ROLE_REQUIRED', 'This email is used for both a job seeker and an employer account.')
+    }
+
+    const user = matches[0]
     const ttl = input.rememberMe ? config.rememberTtlSeconds : config.sessionTtlSeconds
     const session = createSession(db, user.id, ttl)
     writeSessionCookie(res, session.token, session.expires, config.secureCookies)
@@ -406,9 +419,9 @@ export function createApp(config) {
 
   app.post('/api/auth/forgot-password', resetLimiter, asyncRoute(async (req, res) => {
     const input = parse(forgotPasswordSchema, req.body)
-    const user = db.prepare('SELECT id,email FROM users WHERE email=? AND is_active=1').get(input.email.toLowerCase())
+    const accounts = db.prepare('SELECT id,email,role FROM users WHERE email=? AND is_active=1 ORDER BY role').all(input.email.toLowerCase())
 
-    if (user && mailer.enabled) {
+    for (const user of mailer.enabled ? accounts : []) {
       const token = randomBytes(32).toString('base64url')
       const timestamp = nowIso()
       const expiresAt = new Date(Date.now() + config.resetTokenTtlSeconds * 1000).toISOString()
@@ -422,7 +435,8 @@ export function createApp(config) {
       })()
 
       const resetUrl = `${config.appOrigin}/?reset=${token}`
-      const message = passwordResetEmail(resetUrl, Math.round(config.resetTokenTtlSeconds / 60))
+      const label = accounts.length > 1 ? (user.role === 'employer' ? 'employer' : 'job seeker') : ''
+      const message = passwordResetEmail(resetUrl, Math.round(config.resetTokenTtlSeconds / 60), label)
       try {
         await mailer.send({ to: user.email, ...message })
       } catch (error) {
