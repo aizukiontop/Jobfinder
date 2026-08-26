@@ -120,6 +120,7 @@ function toUser(profile: any): User {
     education: profile.education ?? '',
     experienceLevel: profile.experienceLevel ?? '',
     resumeName: profile.resumeName ?? '',
+    visibility: profile.visibility ?? 'private',
     resumeDate: profile.resumeDate ?? '',
     role: 'job-seeker',
     barangay: profile.barangay ?? null,

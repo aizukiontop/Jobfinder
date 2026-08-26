@@ -9,7 +9,6 @@ export type Page =
   | 'reset'
   | 'admin'
   | 'profile'
-  | 'postjob'
   | 'jobdetail'
   | 'apply'
   | 'employer-dashboard'
@@ -104,6 +103,7 @@ export interface User {
   experienceLevel: string
   resumeName: string
   resumeDate: string
+  visibility?: 'public' | 'private'
   role?: UserRole
 
   // Geographic fields (thesis: user location for Dijkstra)

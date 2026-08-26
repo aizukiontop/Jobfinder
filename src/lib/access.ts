@@ -15,7 +15,6 @@ const ACCESS: Record<Page, Audience> = {
   applications: 'job-seeker',
   profile: 'job-seeker',
   apply: 'job-seeker',
-  postjob: 'job-seeker',
 
   'employer-dashboard': 'employer',
   'employer-jobs': 'employer',

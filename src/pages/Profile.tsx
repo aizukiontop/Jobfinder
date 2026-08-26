@@ -26,7 +26,9 @@ export default function Profile() {
   const [savingProfile, setSavingProfile] = useState(false)
   const [resumeName, setResumeName] = useState(user?.resumeName ?? '')
   const [resumeDate, setResumeDate] = useState(user?.resumeDate ?? '')
-  const [visibility, setVisibility] = useState<'Public' | 'Private'>('Public')
+  const [visibility, setVisibility] = useState<'public' | 'private'>(
+    (user?.visibility as 'public' | 'private') ?? 'private'
+  )
   const [photoUrl, setPhotoUrl] = useState(user?.photo ?? '')
   const [photoError, setPhotoError] = useState('')
   const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null)
@@ -51,6 +53,7 @@ export default function Profile() {
       setResumeName(user.resumeName)
       setResumeDate(user.resumeDate)
       setPhotoUrl(user.photo)
+      setVisibility((user.visibility as 'public' | 'private') ?? 'private')
     }
   }, [user])
 
@@ -115,6 +118,7 @@ export default function Profile() {
       education: form.education.trim(),
       resumeName,
       resumeDate,
+      visibility,
       ...homeLocationUpdate(),
     }
     setSavingProfile(true)
@@ -232,10 +236,10 @@ export default function Profile() {
           </div>
           <div style={{ borderTop: '1px solid #f3f4f6' }} className="pt-4 flex items-center justify-between">
             <span className="text-sm text-gray-500">
-              Profile visibility: <strong className="text-gray-700">{visibility}</strong>
+              Profile visibility: <strong className="text-gray-700">{visibility === 'public' ? 'Public' : 'Private'}</strong>
             </span>
             <button
-              onClick={() => setVisibility(v => (v === 'Public' ? 'Private' : 'Public'))}
+              onClick={() => setVisibility(v => (v === 'public' ? 'private' : 'public'))}
               style={{ color: '#16a34a' }}
               className="text-sm font-medium hover:underline"
             >

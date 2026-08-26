@@ -18,7 +18,6 @@ const STATIC_PATHS: Array<[Page, string]> = [
   ['forgot', '/forgot-password'],
   ['reset', '/reset-password'],
   ['profile', '/profile'],
-  ['postjob', '/post-job'],
   ['admin', '/admin'],
   ['employer-dashboard', '/employer'],
   ['employer-jobs', '/employer/jobs'],

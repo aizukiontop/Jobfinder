@@ -16,7 +16,6 @@ import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import Admin from './pages/Admin'
 import Profile from './pages/Profile'
-import PostJob from './pages/PostJob'
 import JobDetail from './pages/JobDetail'
 
 import EmployerDashboard from './pages/employer/EmployerDashboard'
@@ -73,8 +72,6 @@ function AppContent() {
       case 'profile':
         return <Profile />
 
-      case 'postjob':
-        return <PostJob />
 
       case 'jobdetail':
         return <JobDetail />
