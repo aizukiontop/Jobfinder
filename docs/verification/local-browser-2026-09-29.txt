@@ -1,0 +1,8 @@
+PASS PREF-06: rapid slider changes save the final value and survive reload
+PASS PREF-10: failed preference save preserves old weights; retry succeeds
+PASS saved weights are consistent between Search and Profile
+PASS action error is cleared on in-app navigation
+PASS action error is cleared on browser Back navigation
+PASS PESO signs into its dashboard and approves a future posting through the UI
+PASS 375px admin page fits; all 36 legacy postings unchanged; no real email or browser exceptions
+Browser release checks: 7/7 passed (isolated local database only).

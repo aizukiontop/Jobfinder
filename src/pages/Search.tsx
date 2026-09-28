@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useApp } from '../context'
 import { getExternalApplicationUrl } from '../lib/applicationLinks'
+import { createJobSearch } from '../lib/jobSearch'
 import { BARANGAY_NAMES } from '../data/barangays'
 import MapView from '../components/MapView'
+import WeightSlider from '../components/WeightSlider'
 import type { Job } from '../types'
 import type { SkillMatchDetail } from '../lib/ontology'
 
@@ -75,7 +77,7 @@ const EXPERIENCE_FILTERS = [
 
 export default function Search() {
   const { allJobs, navigate, toggleSave, savedJobIds, searchQuery, setSearchQuery,
-          calculateMatchScore, user, getSkillBreakdown, matchLat, matchLng } = useApp()
+          calculateMatchScore, user, getSkillBreakdown, matchLat, matchLng, preferences } = useApp()
   const [localQuery, setLocalQuery] = useState(searchQuery)
   const [dateFilter, setDateFilter] = useState('Any time')
   const [empTypes, setEmpTypes] = useState<string[]>([])
@@ -103,6 +105,10 @@ export default function Search() {
   const [scoresLoading, setScoresLoading] = useState(false)
 
   useEffect(() => { setLocalQuery(searchQuery) }, [searchQuery])
+
+  useEffect(() => { setCurrentPage(1) }, [localQuery, dateFilter, empTypes, expLevels, barangayFilter])
+
+  const jobSearch = useMemo(() => createJobSearch(localQuery), [localQuery])
 
   // Shared: apply any lat/lng as the user location (GPS or manual pin)
   const applyLocation = useCallback((lat: number, lng: number, mode: 'gps' | 'pin') => {
@@ -137,17 +143,7 @@ export default function Search() {
     let jobs = [...allJobs]
 
     // All jobs in allJobs are Angeles City (hard-blocked at import)
-    const q = localQuery.toLowerCase().trim()
-    if (q) {
-      jobs = jobs.filter(
-        j =>
-          j.title.toLowerCase().includes(q) ||
-          j.company.toLowerCase().includes(q) ||
-          j.category.toLowerCase().includes(q) ||
-          (j.requiredSkills ?? j.skills).some(s => s.toLowerCase().includes(q)) ||
-          j.description.toLowerCase().includes(q)
-      )
-    }
+    jobs = jobs.filter(jobSearch.matches)
 
     // Barangay filter
     if (barangayFilter !== 'All Angeles City') {
@@ -178,30 +174,31 @@ export default function Search() {
       )
     }
     return jobs
-  }, [allJobs, localQuery, barangayFilter, dateFilter, empTypes, expLevels])
+  }, [allJobs, jobSearch, barangayFilter, dateFilter, empTypes, expLevels])
 
   // Step 2: Compute Dijkstra-based MatchScores asynchronously whenever
   // the filtered set, user, or location changes. Jobs render immediately
   // (no score shown yet), then re-render as each score arrives.
-  const computeScores = useCallback(async () => {
+  useEffect(() => {
     if (!user) { setMatchScores({}); return }
 
+    let cancelled = false
     setScoresLoading(true)
     const next: Record<string, number> = {}
 
     // Compute all scores concurrently — Dijkstra runs in the browser so
     // Promise.all just queues microtasks; road graph is cached after first load.
-    await Promise.all(
+    Promise.all(
       filtered.map(async job => {
         next[job.id] = await calculateMatchScore(job)
       })
-    )
-
-    setMatchScores(next)
-    setScoresLoading(false)
+    ).then(() => {
+      if (cancelled) return
+      setMatchScores(next)
+      setScoresLoading(false)
+    })
+    return () => { cancelled = true }
   }, [filtered, user, calculateMatchScore])
-
-  useEffect(() => { computeScores() }, [computeScores])
 
   // Step 3: Sort filtered jobs by MatchScore descending (thesis core output).
   // When no user is logged in, preserve dataset order.
@@ -594,6 +591,19 @@ export default function Search() {
 
         {/* Results */}
         <div className="flex-1 min-w-0">
+          {user && (
+            <details
+              style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}
+              className="p-3 mb-3"
+            >
+              <summary className="text-sm text-gray-700 cursor-pointer">
+                Ranking: skill match {preferences.skillWeightPercent}% · distance {100 - preferences.skillWeightPercent}% (change)
+              </summary>
+              <div className="pt-3">
+                <WeightSlider />
+              </div>
+            </details>
+          )}
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-base text-gray-800">
               {barangayFilter !== 'All Angeles City'
@@ -607,6 +617,12 @@ export default function Search() {
               <span className="text-sm text-gray-500">{sorted.length.toLocaleString()} results</span>
             </div>
           </div>
+
+          {jobSearch.skillLabel && (
+            <p className="text-xs text-gray-500 mb-3">
+              Includes keyword matches and required skills related to {jobSearch.skillLabel}.
+            </p>
+          )}
 
           <div className="space-y-2">
             {paginated.map(job => (

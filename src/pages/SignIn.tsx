@@ -31,7 +31,7 @@ export default function SignIn() {
 
     try {
       const role = await signIn(email, password, rememberMe, as)
-      navigate(role === 'employer' ? 'employer-dashboard' : 'home')
+      navigate(role === 'admin' ? 'admin' : role === 'employer' ? 'employer-dashboard' : 'home')
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === 'ROLE_REQUIRED') {
         setChooseRole(true)

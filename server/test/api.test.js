@@ -7,6 +7,7 @@ import path from 'node:path'
 import { after, before, test } from 'node:test'
 import { createApp } from '../app.js'
 import { loadConfig } from '../config.js'
+import { createAdminAccount } from '../panel.js'
 import { hashPassword } from '../security.js'
 
 const VERIFIED_JOB_COUNT = JSON.parse(readFileSync(new URL('../../src/data/jobs.verified.json', import.meta.url), 'utf8')).length
@@ -249,6 +250,16 @@ test('employer ownership and the complete internal application lifecycle are enf
   const created = await json(create)
   assert.equal(create.status, 201, JSON.stringify(created))
   const jobId = created.job.id
+  assert.equal(created.job.reviewStatus, 'pending')
+
+  createAdminAccount(api.db, { email: 'lifecycle-admin@example.com', passwordHash: await hashPassword('TestPass2026'), officeName: 'PESO Angeles City' })
+  const adminCookie = sessionCookie(await request('/api/auth/login', {
+    method: 'POST', body: { email: 'lifecycle-admin@example.com', password: 'TestPass2026' },
+  }))
+  const approve = await request(`/api/admin/jobs/${jobId}/review`, {
+    method: 'POST', cookie: adminCookie, body: { decision: 'approve', reason: '', expectedVersion: created.job.reviewVersion },
+  })
+  assert.equal(approve.status, 200, JSON.stringify(await json(approve.clone())))
 
   const forbiddenUpdate = await request(`/api/employer/jobs/${jobId}`, {
     method: 'PATCH', cookie: otherEmployer.cookie, body: { status: 'closed' },

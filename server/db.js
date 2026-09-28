@@ -65,6 +65,36 @@ function rebuildJobsConstraint(db) {
   return true
 }
 
+function allowAdminRole(db) {
+  const table = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get()
+  const oldCheck = "CHECK(role IN ('job-seeker', 'employer'))"
+  if (!table || !table.sql.includes(oldCheck)) return false
+
+  const rebuilt = table.sql
+    .replace('CREATE TABLE users', 'CREATE TABLE users_migrated')
+    .replace('CREATE TABLE IF NOT EXISTS users', 'CREATE TABLE users_migrated')
+    .replace(oldCheck, "CHECK(role IN ('job-seeker', 'employer', 'admin'))")
+
+  db.pragma('foreign_keys = OFF')
+  try {
+    db.transaction(() => {
+      db.exec(rebuilt)
+      db.exec('INSERT INTO users_migrated SELECT * FROM users')
+      db.exec('DROP TABLE users')
+      db.exec('ALTER TABLE users_migrated RENAME TO users')
+      db.exec("INSERT OR IGNORE INTO schema_migrations(version, name, applied_at) VALUES (4, 'PESO administrator accounts', strftime('%Y-%m-%dT%H:%M:%fZ','now'))")
+    })()
+
+    const violations = db.pragma('foreign_key_check')
+    if (violations.length > 0) {
+      throw new Error(`users table rebuild left ${violations.length} foreign key violations`)
+    }
+  } finally {
+    db.pragma('foreign_keys = ON')
+  }
+  return true
+}
+
 function ensureColumn(db, table, column, definition) {
   const existing = db.pragma(`table_info(${table})`)
   if (existing.some((col) => col.name === column)) return
@@ -77,7 +107,19 @@ export function migrate(db) {
   if (rebuildJobsConstraint(db)) {
     db.exec(schema)
   }
+  if (allowAdminRole(db)) {
+    db.exec(schema)
+  }
   ensureColumn(db, 'job_seeker_profiles', 'photo_key', 'TEXT')
+  ensureColumn(db, 'users', 'status_reason', "TEXT NOT NULL DEFAULT ''")
+  db.transaction(() => {
+    ensureColumn(db, 'jobs', 'review_status', "TEXT NOT NULL DEFAULT 'legacy' CHECK(review_status IN ('legacy','pending','approved','rejected','suspended'))")
+    ensureColumn(db, 'jobs', 'review_reason', "TEXT NOT NULL DEFAULT ''")
+    ensureColumn(db, 'jobs', 'review_version', 'INTEGER NOT NULL DEFAULT 1 CHECK(review_version > 0)')
+    db.exec("CREATE INDEX IF NOT EXISTS ix_jobs_review ON jobs(review_status, status, updated_at DESC)")
+    db.prepare('INSERT OR IGNORE INTO schema_migrations(version,name,applied_at) VALUES (3,?,?)')
+      .run('additive moderation, preferences, audit and notification outbox', nowIso())
+  })()
 }
 
 function ensureSkill(db, name) {
@@ -167,7 +209,7 @@ export function seedVerifiedJobs(db, datasetPath = verifiedJobsPath) {
       requirements_json, benefits_json, openings, latitude, longitude,
       coordinate_source, date_posted, application_deadline, application_url,
       source_url, data_source, application_mode, status, seed_revision,
-      created_at, updated_at
+      created_at, updated_at, review_status
     ) VALUES (
       @id, NULL, @title, @company, @location, @city, @province, @barangay, @address,
       @salary, @salaryMin, @salaryMax, @employmentType, @workArrangement,
@@ -175,33 +217,15 @@ export function seedVerifiedJobs(db, datasetPath = verifiedJobsPath) {
       @requirements, @benefits, @openings, @lat, @lng,
       @coordinateSource, @datePosted, @expirationDate, @applicationUrl,
       @sourceUrl, 'external-verified', 'internal', 'active', @seedRevision,
-      @createdAt, @updatedAt
+      @createdAt, @updatedAt, 'legacy'
     )
-    ON CONFLICT(id) DO UPDATE SET
-      title=excluded.title, company=excluded.company, location=excluded.location,
-      city=excluded.city, province=excluded.province, barangay=excluded.barangay,
-      address=excluded.address, salary_text=excluded.salary_text,
-      salary_min=excluded.salary_min, salary_max=excluded.salary_max,
-      employment_type=excluded.employment_type,
-      work_arrangement=excluded.work_arrangement,
-      experience_level=excluded.experience_level, category=excluded.category,
-      description=excluded.description,
-      responsibilities_json=excluded.responsibilities_json,
-      requirements_json=excluded.requirements_json,
-      benefits_json=excluded.benefits_json, openings=excluded.openings,
-      latitude=excluded.latitude, longitude=excluded.longitude,
-      coordinate_source=excluded.coordinate_source, date_posted=excluded.date_posted,
-      application_deadline=excluded.application_deadline,
-      application_url=excluded.application_url, source_url=excluded.source_url,
-      application_mode='internal', status='active', seed_revision=excluded.seed_revision,
-      updated_at=excluded.updated_at
-    WHERE jobs.data_source='external-verified'
+    ON CONFLICT(id) DO NOTHING
   `)
 
   const seed = db.transaction(() => {
     const timestamp = nowIso()
     for (const job of jobs) {
-      upsert.run({
+      const inserted = upsert.run({
         ...job,
         responsibilities: JSON.stringify(job.responsibilities ?? []),
         requirements: JSON.stringify(job.requirements ?? []),
@@ -213,7 +237,7 @@ export function seedVerifiedJobs(db, datasetPath = verifiedJobsPath) {
         createdAt: timestamp,
         updatedAt: timestamp,
       })
-      replaceJobSkills(db, job.id, job.requiredSkills ?? job.skills ?? [], job.preferredSkills ?? [])
+      if (inserted.changes) replaceJobSkills(db, job.id, job.requiredSkills ?? job.skills ?? [], job.preferredSkills ?? [])
     }
     db.prepare(`
       INSERT INTO data_seeds(name, version, sha256, applied_at)

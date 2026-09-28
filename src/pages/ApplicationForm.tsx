@@ -207,7 +207,7 @@ export default function ApplicationForm() {
             style={{ background: '#fefce8', border: '1px solid #fde047', borderRadius: 8 }}
             className="p-4 mb-6 text-sm text-yellow-800"
           >
-            You have already applied for this position. Submitting again will create a duplicate application.
+            You have already applied for this position. Each job accepts only one application from you.
           </div>
         )}
 

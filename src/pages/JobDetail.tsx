@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useApp } from '../context'
 import { getExternalApplicationUrl } from '../lib/applicationLinks'
 import type { SkillMatchDetail } from '../lib/ontology'
+import type { RecommendationScore } from '../types'
 
 function BookmarkIcon({ filled }: { filled: boolean }) {
   return (
@@ -21,8 +22,22 @@ function BuildingIcon() {
 }
 
 export default function JobDetail() {
-  const { allJobs, selectedJobId, navigate, prevPage, toggleSave, savedJobIds, hasApplied, user, calculateMatchScore, calculateSkillMatchScore, getSkillBreakdown, calculateDistanceScore, jobsLoading } = useApp()
+  const { allJobs, selectedJobId, navigate, prevPage, toggleSave, savedJobIds, hasApplied, user, calculateRecommendationScore, calculateSkillMatchScore, getSkillBreakdown, jobsLoading } = useApp()
   const job = allJobs.find(j => j.id === selectedJobId)
+
+  // Async Dijkstra-based composite score.
+  // No user location is available on this page, so G(a,j) uses the user's
+  // stored barangay centroid if present, otherwise G=0 (skill-only score).
+  const [score, setScore] = useState<RecommendationScore | null>(null)
+  useEffect(() => {
+    setScore(null)
+    if (!user || !job) return
+    let cancelled = false
+    calculateRecommendationScore(job).then(result => {
+      if (!cancelled) setScore(result)
+    })
+    return () => { cancelled = true }
+  }, [user, job, calculateRecommendationScore])
 
   if (!job && jobsLoading) {
     return (
@@ -46,18 +61,8 @@ export default function JobDetail() {
   const saved = savedJobIds.includes(job.id)
   const applied = hasApplied(job.id)
   const applicationUrl = getExternalApplicationUrl(job)
-  const skillScore = user && job ? calculateSkillMatchScore(job) : 0
-
-  // Async Dijkstra-based composite score.
-  // No user location is available on this page, so G(a,j) uses the user's
-  // stored barangay centroid if present, otherwise G=0 (skill-only score).
-  const [matchScore, setMatchScore] = useState<number>(0)
-  const [distanceScore, setDistanceScore] = useState<number>(0)
-  useEffect(() => {
-    if (!user || !job) { setMatchScore(0); return }
-    calculateMatchScore(job).then(s => setMatchScore(Math.round(s * 100)))
-    calculateDistanceScore(job).then(s => setDistanceScore(Math.round(s * 100)))
-  }, [user, job, calculateMatchScore])
+  const skillScore = user ? calculateSkillMatchScore(job) : 0
+  const matchScore = score ? Math.round(score.total * 100) : 0
 
   return (
     <div style={{ background: '#f9fafb', minHeight: '100vh' }} className="px-4 py-8">
@@ -254,8 +259,7 @@ export default function JobDetail() {
             <SkillMatchBreakdown
               breakdown={getSkillBreakdown(job)}
               skillScore={Math.round(skillScore * 100)}
-              distanceScore={distanceScore}
-              matchScore={matchScore}
+              score={score}
             />
           )}
         </div>
@@ -264,18 +268,54 @@ export default function JobDetail() {
   )
 }
 
+function ScoreSummary({ score }: { score: RecommendationScore }) {
+  const skillWeight = score.skillWeightPercent
+  const distanceWeight = 100 - skillWeight
+  const skillPoints = score.skillScore * skillWeight
+  const distancePoints = score.distanceScore * distanceWeight
+  const distanceNote = score.accessibilityStatus === 'available' && score.totalKm != null
+    ? `${DISTANCE_NOTES.available}: ${score.totalKm.toFixed(2)} km`
+    : DISTANCE_NOTES[score.accessibilityStatus]
+
+  return (
+    <div style={{ background: '#f9fafb', borderRadius: 8 }} className="p-4 mb-4">
+      <p className="text-xs text-gray-500 mb-3">
+        Overall {Math.round(score.total * 100)}% = {skillWeight}% skill match + {distanceWeight}% distance
+        (your saved weights)
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <p className="text-xl font-bold" style={{ color: '#0f2044' }}>{Math.round(score.skillScore * 100)}%</p>
+          <p className="text-xs text-gray-500">Skill match · adds {skillPoints.toFixed(1)} points</p>
+        </div>
+        <div>
+          <p className="text-xl font-bold" style={{ color: '#0f2044' }}>{Math.round(score.distanceScore * 100)}%</p>
+          <p className="text-xs text-gray-500">Distance · adds {distancePoints.toFixed(1)} points</p>
+          <p className="text-xs text-gray-500 mt-1">{distanceNote}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Skill Match Breakdown (explainability) ────────────────────────────────────
+
+const DISTANCE_NOTES = {
+  'available': 'Road distance by Dijkstra',
+  'not-used': 'Not used, because your skill weight is 100%',
+  'missing-location': 'Set your home location in your profile to include distance',
+  'missing-job-location': 'This job has no map location, so distance counts as 0',
+  'route-unavailable': 'No road route was found, so distance counts as 0',
+}
 
 function SkillMatchBreakdown({
   breakdown,
   skillScore,
-  distanceScore,
-  matchScore,
+  score,
 }: {
   breakdown: SkillMatchDetail[]
   skillScore: number
-  distanceScore: number
-  matchScore: number
+  score: RecommendationScore | null
 }) {
   const [open, setOpen] = useState(false)
   if (breakdown.length === 0) return null
@@ -286,23 +326,11 @@ function SkillMatchBreakdown({
 
   return (
     <div style={{ borderTop: '1px solid #f3f4f6' }} className="pt-5 pb-5">
-      <div style={{ background: '#f9fafb', borderRadius: 8 }} className="p-4 mb-4">
-        <p className="text-xs text-gray-500 mb-3">
-          Overall {matchScore}% = 70% skill compatibility + 30% travel accessibility
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className="text-xl font-bold" style={{ color: '#0f2044' }}>{skillScore}%</p>
-            <p className="text-xs text-gray-500">Skill match</p>
-          </div>
-          <div>
-            <p className="text-xl font-bold" style={{ color: '#0f2044' }}>{distanceScore}%</p>
-            <p className="text-xs text-gray-500">
-              {distanceScore > 0 ? 'Travel accessibility' : 'Set a home barangay in your profile'}
-            </p>
-          </div>
-        </div>
-      </div>
+      {score ? (
+        <ScoreSummary score={score} />
+      ) : (
+        <p className="text-xs text-gray-500 mb-4">Calculating the overall match…</p>
+      )}
 
       {/* Header — always visible, click to toggle */}
       <button

@@ -1,12 +1,7 @@
 import { useState } from 'react'
 import { useApp } from '../../context'
 import type { EmployerJob } from '../../types'
-
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  active: { bg: '#dcfce7', text: '#15803d' },
-  closed: { bg: '#f3f4f6', text: '#6b7280' },
-  draft: { bg: '#fef9c3', text: '#a16207' },
-}
+import PostingReviewStatus from '../../components/PostingReviewStatus'
 
 type StatusFilter = 'all' | 'active' | 'closed' | 'draft'
 
@@ -101,7 +96,6 @@ export default function EmployerJobs() {
               </thead>
               <tbody>
                 {paginated.map(job => {
-                  const s = STATUS_COLORS[job.status]
                   return (
                     <tr key={job.id} style={{ borderBottom: '1px solid #f9fafb' }} className="hover:bg-gray-50">
                       <td className="px-5 py-3.5">
@@ -125,9 +119,10 @@ export default function EmployerJobs() {
                         {job.daysAgo === 0 ? 'Today' : `${job.daysAgo}d ago`}
                       </td>
                       <td className="px-5 py-3.5">
-                        <span style={{ background: s.bg, color: s.text, borderRadius: 999, fontSize: 11 }} className="px-2.5 py-0.5 font-semibold capitalize">
-                          {job.status}
-                        </span>
+                        <PostingReviewStatus job={job} />
+                        {job.reviewReason && (job.reviewStatus === 'rejected' || job.reviewStatus === 'suspended') && (
+                          <p className="text-xs text-red-700 mt-1 max-w-[220px]">Reason: {job.reviewReason}</p>
+                        )}
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -140,13 +135,22 @@ export default function EmployerJobs() {
                           </button>
                           <span className="text-gray-300">|</span>
                           {job.status === 'draft' ? (
-                            <button
-                              onClick={() => publishDraft(job.id)}
-                              style={{ color: '#16a34a' }}
-                              className="text-xs font-medium hover:underline"
-                            >
-                              Publish
-                            </button>
+                            <>
+                              <button
+                                onClick={() => navigate('employer-post', job.id)}
+                                style={{ color: '#0f2044' }}
+                                className="text-xs font-medium hover:underline"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => publishDraft(job.id)}
+                                style={{ color: '#16a34a' }}
+                                className="text-xs font-medium hover:underline"
+                              >
+                                Submit for review
+                              </button>
+                            </>
                           ) : job.status === 'active' ? (
                             <>
                               <button

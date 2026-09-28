@@ -6,6 +6,8 @@ import { formatRelativeDate } from '../lib/formatDate'
 import { CATEGORIES, EMPLOYMENT_TYPES, EXPERIENCE_LEVELS } from '../data'
 import { ANGELES_CITY_BARANGAYS } from '../data/barangays'
 import { findBarangay, isWithinAngelesCity } from '../lib/geo'
+import WeightSlider from '../components/WeightSlider'
+import NotificationToggle from '../components/NotificationToggle'
 
 export default function Profile() {
   const { user, updateUser, navigate } = useApp()
@@ -426,6 +428,17 @@ export default function Profile() {
             >
               {savingProfile ? 'Saving…' : 'Save Changes'}
             </button>
+          </div>
+        </div>
+
+        <div
+          style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10 }}
+          className="p-6 mb-8 space-y-5"
+        >
+          <h2 className="font-semibold text-base text-gray-900">Recommendation Settings</h2>
+          <WeightSlider />
+          <div style={{ borderTop: '1px solid #f3f4f6' }} className="pt-5">
+            <NotificationToggle description="Tell me when an employer updates the status of my application." />
           </div>
         </div>
 

@@ -23,6 +23,10 @@ const ACCESS: Record<Page, Audience> = {
   'employer-profile': 'employer',
 
   admin: 'admin',
+  'admin-postings': 'admin',
+  'admin-employers': 'admin',
+  'admin-seekers': 'admin',
+  'admin-logs': 'admin',
 }
 
 export function audienceFor(page: Page): Audience {
@@ -43,7 +47,7 @@ export function checkAccess(page: Page, viewer: Viewer): AccessResult {
   const audience = audienceFor(page)
   if (audience === 'public') return { allowed: true }
 
-  const signedIn = viewer.isSeeker || viewer.isEmployer
+  const signedIn = viewer.isSeeker || viewer.isEmployer || viewer.isAdmin
   if (!signedIn) return { allowed: false, reason: 'signed-out', audience }
 
   if (audience === 'admin' && !viewer.isAdmin) {
@@ -61,5 +65,6 @@ export function checkAccess(page: Page, viewer: Viewer): AccessResult {
 
 /** Where a viewer belongs when they land somewhere they cannot use. */
 export function homePageFor(viewer: Viewer): Page {
+  if (viewer.isAdmin) return 'admin'
   return viewer.isEmployer ? 'employer-dashboard' : 'home'
 }

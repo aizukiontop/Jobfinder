@@ -8,6 +8,10 @@ export type Page =
   | 'forgot'
   | 'reset'
   | 'admin'
+  | 'admin-postings'
+  | 'admin-employers'
+  | 'admin-seekers'
+  | 'admin-logs'
   | 'profile'
   | 'jobdetail'
   | 'apply'
@@ -17,7 +21,25 @@ export type Page =
   | 'employer-applicants'
   | 'employer-profile'
 
-export type UserRole = 'job-seeker' | 'employer'
+export type UserRole = 'job-seeker' | 'employer' | 'admin'
+
+export interface RecommendationPreferences {
+  skillWeightPercent: number
+  notificationEmails: boolean
+}
+
+export interface RecommendationScore {
+  skillScore: number
+  distanceScore: number
+  skillWeightPercent: number
+  total: number
+  accessibilityStatus: 'available' | 'missing-location' | 'missing-job-location' | 'route-unavailable' | 'not-used'
+  routeKm: number | null
+  snapKm: number | null
+  totalKm: number | null
+}
+
+export type JobReviewStatus = 'legacy' | 'pending' | 'approved' | 'rejected' | 'suspended'
 
 /**
  * Data source classification (Section 7 of thesis requirements):
@@ -79,6 +101,9 @@ export interface Job {
   /** The API decides whether JobFinder or the verified source accepts applications. */
   applicationMode?: 'internal' | 'external'
   status?: 'draft' | 'active' | 'closed'
+  reviewStatus?: JobReviewStatus
+  reviewReason?: string
+  reviewVersion?: number
 
   /** Clearly distinguishes real postings from sample/demo data. */
   dataSource: DataSource
@@ -172,6 +197,9 @@ export interface EmployerJob {
   openings: number
   deadline: string
   status: 'active' | 'closed' | 'draft'
+  reviewStatus?: JobReviewStatus
+  reviewReason?: string
+  reviewVersion?: number
   postedDate: string
   daysAgo: number
   /** Derived from actual Application records — never hardcoded. */

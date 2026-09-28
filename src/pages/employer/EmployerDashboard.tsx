@@ -1,4 +1,5 @@
 import { useApp } from '../../context'
+import PostingReviewStatus from '../../components/PostingReviewStatus'
 
 function StatCard({ label, value, icon, color }: { label: string; value: number | string; icon: React.ReactNode; color: string }) {
   return (
@@ -14,11 +15,6 @@ function StatCard({ label, value, icon, color }: { label: string; value: number 
   )
 }
 
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  active: { bg: '#dcfce7', text: '#15803d' },
-  closed: { bg: '#f3f4f6', text: '#6b7280' },
-  draft: { bg: '#fef9c3', text: '#a16207' },
-}
 
 export default function EmployerDashboard() {
   const { employer, employerJobs, allApplicants, navigate, getApplicantCount } = useApp()
@@ -92,7 +88,6 @@ export default function EmployerDashboard() {
               </thead>
               <tbody>
                 {recentJobs.map(job => {
-                  const s = STATUS_COLORS[job.status] ?? STATUS_COLORS.draft
                   return (
                     <tr key={job.id} style={{ borderBottom: '1px solid #f9fafb' }} className="hover:bg-gray-50">
                       <td className="px-5 py-3">
@@ -112,9 +107,7 @@ export default function EmployerDashboard() {
                         {job.daysAgo === 0 ? 'Today' : `${job.daysAgo}d ago`}
                       </td>
                       <td className="px-5 py-3">
-                        <span style={{ background: s.bg, color: s.text, borderRadius: 999, fontSize: 11 }} className="px-2.5 py-0.5 font-semibold capitalize">
-                          {job.status}
-                        </span>
+                        <PostingReviewStatus job={job} />
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2">

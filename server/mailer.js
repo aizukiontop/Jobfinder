@@ -12,20 +12,21 @@ export function createMailer(config = {}) {
 
   return {
     enabled: true,
-    async send({ to, subject, text, html }) {
+    async send({ to, subject, text, html, idempotencyKey }) {
+      const headers = {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      }
+      if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ from, to: [to], subject, text, html }),
         signal: AbortSignal.timeout(10_000),
       })
 
       if (!response.ok) {
-        const detail = await response.text().catch(() => '')
-        throw new Error(`Email provider rejected the message (${response.status}): ${detail.slice(0, 200)}`)
+        throw new Error(`Email provider rejected the message (${response.status})`)
       }
     },
   }

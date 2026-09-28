@@ -3,6 +3,7 @@ import { checkAccess, homePageFor } from './lib/access'
 
 import Header from './components/Header'
 import EmployerHeader from './components/EmployerHeader'
+import AdminHeader from './components/AdminHeader'
 import Footer from './components/Footer'
 
 import Home from './pages/Home'
@@ -14,7 +15,11 @@ import SignIn from './pages/SignIn'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
-import Admin from './pages/Admin'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminPostingsPage from './pages/admin/AdminPostingsPage'
+import AdminEmployers from './pages/admin/AdminEmployers'
+import AdminSeekers from './pages/admin/AdminSeekers'
+import AdminLogs from './pages/admin/AdminLogs'
 import Profile from './pages/Profile'
 import JobDetail from './pages/JobDetail'
 
@@ -67,7 +72,15 @@ function AppContent() {
         return <ResetPassword />
 
       case 'admin':
-        return <Admin />
+        return <AdminDashboard />
+      case 'admin-postings':
+        return <AdminPostingsPage />
+      case 'admin-employers':
+        return <AdminEmployers />
+      case 'admin-seekers':
+        return <AdminSeekers />
+      case 'admin-logs':
+        return <AdminLogs />
 
       case 'profile':
         return <Profile />
@@ -108,7 +121,9 @@ function AppContent() {
         flexDirection: 'column',
       }}
     >
-      {isEmployerPage ? (
+      {isAdmin ? (
+        <AdminHeader />
+      ) : isEmployerPage ? (
         <EmployerHeader />
       ) : (
         <Header />

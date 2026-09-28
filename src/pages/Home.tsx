@@ -73,13 +73,16 @@ export default function Home() {
     if (!user) { setFeaturedJobs(allJobs.slice(0, 4)); return }
     const lat = user.lat ?? undefined
     const lng = user.lng ?? undefined
+    let cancelled = false
     Promise.all(
       allJobs.map(async j => ({ job: j, score: await calculateMatchScore(j, lat, lng) }))
     ).then(scored => {
+      if (cancelled) return
       setFeaturedJobs(
         scored.sort((a, b) => b.score - a.score).slice(0, 4).map(x => x.job)
       )
     })
+    return () => { cancelled = true }
   }, [user, allJobs, calculateMatchScore])
 
   const categoryCounts = CATEGORIES

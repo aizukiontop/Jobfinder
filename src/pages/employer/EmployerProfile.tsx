@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../../context'
+import NotificationToggle from '../../components/NotificationToggle'
 
 const INDUSTRIES = ['Information Technology', 'Healthcare', 'Education', 'Retail & Trade', 'Manufacturing', 'Finance & Banking', 'Hospitality & Tourism', 'Construction', 'Transportation', 'Other']
 const COMPANY_SIZES = ['1-10 employees', '11-50 employees', '51-200 employees', '201-500 employees', '500+ employees']
@@ -173,6 +174,10 @@ export default function EmployerProfile() {
                 <input value={form.companySize} readOnly style={inputStyle(true)} className={inputClass} />
               )}
             </div>
+          </div>
+
+          <div style={{ borderTop: '1px solid #f3f4f6' }} className="pt-5 mb-5">
+            <NotificationToggle description="Tell me when a posting is reviewed or someone applies to my job." />
           </div>
 
           {editing && (

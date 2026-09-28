@@ -99,6 +99,14 @@ export function dijkstra(
   const t0 = performance.now()
   const { adj } = graph
 
+  if (!Object.prototype.hasOwnProperty.call(graph.nodes, sourceNodeId) ||
+      !Object.prototype.hasOwnProperty.call(graph.nodes, targetNodeId)) {
+    return {
+      found: false, sourceNodeId, targetNodeId, distanceKm: Infinity, path: [],
+      nodesEvaluated: 0, edgesRelaxed: 0, executionMs: performance.now() - t0,
+    }
+  }
+
   const dist = new Map<string, number>()
   const prev = new Map<string, string>()
   dist.set(sourceNodeId, 0)

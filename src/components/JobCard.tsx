@@ -59,7 +59,11 @@ export default function JobCard({ job, compact = false, showMatch = false }: Job
   const [matchScore, setMatchScore] = useState(0)
   useEffect(() => {
     if (!showMatch || !user) { setMatchScore(0); return }
-    calculateMatchScore(job).then(s => setMatchScore(Math.round(s * 100)))
+    let cancelled = false
+    calculateMatchScore(job).then(s => {
+      if (!cancelled) setMatchScore(Math.round(s * 100))
+    })
+    return () => { cancelled = true }
   }, [showMatch, user, job, calculateMatchScore])
 
   const timeLabel = job.daysAgo === 0

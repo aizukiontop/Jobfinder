@@ -9,10 +9,16 @@ import multer from 'multer'
 import { z } from 'zod'
 import { getJobSkills, getUserSkills, initializeDatabase, normalizeSkill, nowIso, openDatabase, replaceJobSkills, replaceUserSkills } from './db.js'
 import { createMailer, passwordResetEmail } from './mailer.js'
+import { createNotifications } from './notifications.js'
+import { PUBLIC_JOB_SQL, audit, registerPanelRoutes } from './panel.js'
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, passwordProblems } from './password.js'
 import { ApiError, asyncRoute, authenticate, clearSessionCookie, createSession, hashPassword, originGuard, requireRole, sha256, verifyPassword, writeSessionCookie } from './security.js'
 
 const APPLICATION_STATUSES = ['applied', 'reviewing', 'shortlisted', 'interview', 'hired', 'rejected']
+const APPLICATION_STATUS_LABELS = {
+  applied: 'Applied', reviewing: 'Under review', shortlisted: 'Shortlisted',
+  interview: 'Interview', hired: 'Hired', rejected: 'Not selected',
+}
 const PROFILE_FIELDS = new Set([
   'firstName', 'lastName', 'headline', 'visibility', 'preferredLocation',
   'preferredEmploymentType', 'careerCategory', 'education', 'experienceLevel',
@@ -173,6 +179,9 @@ function jobDto(db, row) {
     postedBy: row.owner_user_id,
     applicationMode: row.application_mode,
     status: row.status,
+    reviewStatus: row.review_status,
+    reviewReason: row.review_reason,
+    reviewVersion: row.review_version,
   }
 }
 
@@ -223,10 +232,21 @@ function employerProfile(db, user) {
   }
 }
 
-function sessionDto(db, user, admin = false) {
+function adminProfile(db, user) {
+  const row = db.prepare('SELECT office_name FROM admin_profiles WHERE user_id=?').get(user.id)
+  return { id: user.id, email: user.email, role: user.role, officeName: row?.office_name ?? 'PESO Angeles City' }
+}
+
+function profileFor(db, user) {
+  if (user.role === 'job-seeker') return seekerProfile(db, user)
+  if (user.role === 'employer') return employerProfile(db, user)
+  return adminProfile(db, user)
+}
+
+function sessionDto(db, user) {
   return {
-    account: { id: user.id, email: user.email, role: user.role, isAdmin: admin },
-    profile: user.role === 'job-seeker' ? seekerProfile(db, user) : employerProfile(db, user),
+    account: { id: user.id, email: user.email, role: user.role, isAdmin: user.role === 'admin' },
+    profile: profileFor(db, user),
   }
 }
 
@@ -306,14 +326,7 @@ export function createApp(config) {
   const db = openDatabase(config.dbPath)
   initializeDatabase(db, { seed: config.seedOnStart })
   const requireAuth = authenticate(db)
-  const adminEmails = new Set(config.adminEmails ?? [])
-  const isAdmin = (user) => adminEmails.has(String(user?.email ?? '').toLowerCase())
-  const requireAdmin = (req, _res, next) => {
-    if (!isAdmin(req.auth)) {
-      return next(new ApiError(403, 'FORBIDDEN', 'You do not have permission to perform this action.'))
-    }
-    next()
-  }
+  const requireAdmin = requireRole('admin')
   const app = express()
   app.disable('x-powered-by')
   app.set('trust proxy', 'loopback')
@@ -321,9 +334,16 @@ export function createApp(config) {
   app.use(express.json({ limit: '64kb' }))
   app.use(originGuard(config.appOrigin))
 
-  const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: config.authRateLimit, standardHeaders: true, legacyHeaders: false })
-  const resetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false })
-  const mailer = createMailer(config.mail)
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, limit: config.authRateLimit, standardHeaders: true, legacyHeaders: false,
+    message: { error: { code: 'TOO_MANY_ATTEMPTS', message: 'Too many attempts. Please wait 15 minutes and try again.' } },
+  })
+  const resetLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false,
+    message: { error: { code: 'TOO_MANY_ATTEMPTS', message: 'Too many reset requests. Please wait an hour and try again.' } },
+  })
+  const mailer = config.mailer ?? createMailer(config.mail)
+  const notifications = createNotifications(db, mailer, { enabled: config.notificationsEnabled === true })
   const upload = multer({
     storage: multer.diskStorage({ destination: tempDir, filename: (_req, _file, cb) => cb(null, randomUUID()) }),
     limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 10 },
@@ -391,7 +411,7 @@ export function createApp(config) {
     })()
     const session = createSession(db, id, config.sessionTtlSeconds)
     writeSessionCookie(res, session.token, session.expires, config.secureCookies)
-    res.status(201).json(sessionDto(db, { id, email, role: input.role }, isAdmin({ email })))
+    res.status(201).json(sessionDto(db, { id, email, role: input.role }))
   }))
 
   app.post('/api/auth/login', authLimiter, asyncRoute(async (req, res) => {
@@ -413,7 +433,7 @@ export function createApp(config) {
     const ttl = input.rememberMe ? config.rememberTtlSeconds : config.sessionTtlSeconds
     const session = createSession(db, user.id, ttl)
     writeSessionCookie(res, session.token, session.expires, config.secureCookies)
-    res.json(sessionDto(db, user, isAdmin(user)))
+    res.json(sessionDto(db, user))
   }))
 
 
@@ -471,7 +491,7 @@ export function createApp(config) {
     res.json({ ok: true })
   }))
 
-  app.get('/api/auth/me', requireAuth, (req, res) => res.json(sessionDto(db, req.auth, isAdmin(req.auth))))
+  app.get('/api/auth/me', requireAuth, (req, res) => res.json(sessionDto(db, req.auth)))
   app.post('/api/auth/logout', requireAuth, (req, res) => {
     db.prepare('DELETE FROM sessions WHERE id=?').run(req.auth.sessionId)
     clearSessionCookie(res, config.secureCookies)
@@ -479,7 +499,7 @@ export function createApp(config) {
   })
 
   app.get('/api/jobs', (req, res) => {
-    let rows = db.prepare("SELECT * FROM jobs WHERE status='active' ORDER BY date_posted DESC, created_at DESC").all()
+    let rows = db.prepare(`SELECT * FROM jobs WHERE ${PUBLIC_JOB_SQL} ORDER BY date_posted DESC, created_at DESC`).all()
     const q = String(req.query.query ?? '').trim().toLowerCase()
     const barangay = String(req.query.barangay ?? '').trim().toLowerCase()
     const employmentType = String(req.query.employmentType ?? '').trim().toLowerCase()
@@ -494,12 +514,12 @@ export function createApp(config) {
   })
 
   app.get('/api/jobs/:jobId', (req, res, next) => {
-    const row = db.prepare("SELECT * FROM jobs WHERE id=? AND status='active'").get(req.params.jobId)
+    const row = db.prepare(`SELECT * FROM jobs WHERE id=? AND ${PUBLIC_JOB_SQL}`).get(req.params.jobId)
     if (!row) return next(new ApiError(404, 'JOB_NOT_FOUND', 'Job not found.'))
     res.json({ job: jobDto(db, row) })
   })
 
-  app.get('/api/me/profile', requireAuth, (req, res) => res.json({ profile: sessionDto(db, req.auth, isAdmin(req.auth)).profile }))
+  app.get('/api/me/profile', requireAuth, (req, res) => res.json({ profile: profileFor(db, req.auth) }))
 
   app.patch('/api/me/profile', requireAuth, (req, res, next) => {
     try {
@@ -527,7 +547,12 @@ export function createApp(config) {
             merged.preferredEmploymentType, merged.careerCategory, merged.education, merged.experienceLevel,
             merged.barangay, merged.lat, merged.lng, timestamp, req.auth.id)
           if (Array.isArray(input.skills)) replaceUserSkills(db, req.auth.id, input.skills)
+          audit(db, req.auth, 'profile.updated', 'user', req.auth.id, 'Job seeker profile updated.', { fields: Object.keys(input) })
         })()
+      } else if (req.auth.role === 'admin') {
+        const officeName = String(req.body?.officeName ?? '').trim()
+        if (!officeName || officeName.length > 160) throw new ApiError(400, 'VALIDATION_ERROR', 'Office name is required.')
+        db.prepare('UPDATE admin_profiles SET office_name=?,updated_at=? WHERE user_id=?').run(officeName, timestamp, req.auth.id)
       } else {
         const input = selectKeys(req.body, EMPLOYER_FIELDS)
         const row = employerProfile(db, req.auth)
@@ -535,13 +560,16 @@ export function createApp(config) {
         if (!merged.companyName?.trim() || !merged.industry?.trim() || !merged.contactName?.trim()) {
           throw new ApiError(400, 'VALIDATION_ERROR', 'Company, industry, and contact name are required.')
         }
-        db.prepare(`
-          UPDATE employer_profiles SET contact_name=?,company_name=?,industry=?,description=?,address=?,
-            contact_email=?,contact_phone=?,website=?,company_size=?,updated_at=? WHERE user_id=?
-        `).run(merged.contactName, merged.companyName, merged.industry, merged.description, merged.address,
-          merged.contactEmail, merged.contactPhone, merged.website, merged.companySize, timestamp, req.auth.id)
+        db.transaction(() => {
+          db.prepare(`
+            UPDATE employer_profiles SET contact_name=?,company_name=?,industry=?,description=?,address=?,
+              contact_email=?,contact_phone=?,website=?,company_size=?,updated_at=? WHERE user_id=?
+          `).run(merged.contactName, merged.companyName, merged.industry, merged.description, merged.address,
+            merged.contactEmail, merged.contactPhone, merged.website, merged.companySize, timestamp, req.auth.id)
+          audit(db, req.auth, 'profile.updated', 'user', req.auth.id, 'Employer profile updated.', { fields: Object.keys(input) })
+        })()
       }
-      res.json({ profile: sessionDto(db, req.auth, isAdmin(req.auth)).profile })
+      res.json({ profile: profileFor(db, req.auth) })
     } catch (error) { next(error) }
   })
 
@@ -691,6 +719,7 @@ export function createApp(config) {
       FROM users u
       LEFT JOIN job_seeker_profiles s ON s.user_id = u.id
       LEFT JOIN employer_profiles e ON e.user_id = u.id
+      WHERE u.role <> 'admin'
       ORDER BY u.created_at DESC
     `).all()
 
@@ -763,6 +792,7 @@ export function createApp(config) {
       db.prepare('DELETE FROM saved_jobs WHERE job_id=?').run(job.id)
       db.prepare('DELETE FROM job_skills WHERE job_id=?').run(job.id)
       db.prepare('DELETE FROM jobs WHERE id=?').run(job.id)
+      audit(db, req.auth, 'job.deleted', 'job', job.id, `Job posting "${job.title}" deleted by an administrator.`)
     })()
 
     res.status(204).end()
@@ -773,7 +803,7 @@ export function createApp(config) {
     res.json({ jobIds })
   })
   app.put('/api/me/saved-jobs/:jobId', requireAuth, requireRole('job-seeker'), (req, res, next) => {
-    if (!db.prepare("SELECT 1 FROM jobs WHERE id=? AND status='active'").get(req.params.jobId)) return next(new ApiError(404, 'JOB_NOT_FOUND', 'Job not found.'))
+    if (!db.prepare(`SELECT 1 FROM jobs WHERE id=? AND ${PUBLIC_JOB_SQL}`).get(req.params.jobId)) return next(new ApiError(404, 'JOB_NOT_FOUND', 'Job not found.'))
     db.prepare('INSERT OR IGNORE INTO saved_jobs(user_id,job_id,created_at) VALUES (?,?,?)').run(req.auth.id, req.params.jobId, nowIso())
     res.status(204).end()
   })
@@ -798,14 +828,18 @@ export function createApp(config) {
       db.prepare(`
         INSERT INTO jobs(id,owner_user_id,title,company,location,city,province,barangay,address,salary_text,salary_min,salary_max,
           employment_type,work_arrangement,experience_level,category,description,responsibilities_json,requirements_json,benefits_json,
-          openings,latitude,longitude,coordinate_source,date_posted,application_deadline,data_source,application_mode,status,created_at,updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'employer-created','internal',?,?,?)
+          openings,latitude,longitude,coordinate_source,date_posted,application_deadline,data_source,application_mode,status,created_at,updated_at,
+          review_status)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'employer-created','internal',?,?,?,'pending')
       `).run(id, req.auth.id, input.title, employer.companyName, input.location, input.city, input.province, input.barangay,
         input.address, input.salary, input.salaryMin, input.salaryMax, input.employmentType, input.workArrangement,
         input.experienceLevel, input.category, input.description, JSON.stringify(input.responsibilities), JSON.stringify(input.requirements),
         JSON.stringify(input.benefits), input.openings, input.lat, input.lng, input.coordinateSource,
-        input.status === 'active' ? timestamp.slice(0, 10) : null, input.applicationDeadline, input.status, timestamp, timestamp)
+        null, input.applicationDeadline, input.status, timestamp, timestamp)
       replaceJobSkills(db, id, input.requiredSkills, input.preferredSkills)
+      audit(db, req.auth, input.status === 'active' ? 'job.submitted' : 'job.draft_saved', 'job', id,
+        input.status === 'active' ? `New posting "${input.title}" submitted for review.` : `Draft posting "${input.title}" saved.`,
+        { toStatus: input.status, toReview: 'pending', version: 1 })
     })()
     res.status(201).json({ job: jobDto(db, db.prepare('SELECT * FROM jobs WHERE id=?').get(id)) })
   })
@@ -829,18 +863,37 @@ export function createApp(config) {
     const input = parse(jobInputSchema, { ...currentInput, ...req.body })
     if (input.status === 'active') assertPublishable(input)
     const employer = employerProfile(db, req.auth)
+    const before = jobInputSchema.safeParse(currentInput).data ?? currentInput
+    const changedFields = Object.keys(before)
+      .filter((key) => key !== 'status' && JSON.stringify(before[key]) !== JSON.stringify(input[key]))
+    const legacy = row.review_status === 'legacy'
+    let review = row.review_status
+    let reason = row.review_reason
+    let version = row.review_version
+    if (!legacy) {
+      if (changedFields.length || input.status !== row.status) version += 1
+      if (input.status === 'active' && (changedFields.length || row.review_status !== 'approved')) {
+        review = 'pending'
+        reason = ''
+      }
+    }
+    const datePosted = legacy && input.status === 'active' ? nowIso().slice(0, 10) : null
     db.transaction(() => {
       db.prepare(`
         UPDATE jobs SET title=?,company=?,location=?,city=?,province=?,barangay=?,address=?,salary_text=?,salary_min=?,salary_max=?,
           employment_type=?,work_arrangement=?,experience_level=?,category=?,description=?,responsibilities_json=?,requirements_json=?,
           benefits_json=?,openings=?,latitude=?,longitude=?,coordinate_source=?,date_posted=COALESCE(date_posted,?),
-          application_deadline=?,status=?,updated_at=? WHERE id=? AND owner_user_id=?
+          application_deadline=?,status=?,review_status=?,review_reason=?,review_version=?,updated_at=? WHERE id=? AND owner_user_id=?
       `).run(input.title, employer.companyName, input.location, input.city, input.province, input.barangay, input.address,
         input.salary, input.salaryMin, input.salaryMax, input.employmentType, input.workArrangement, input.experienceLevel,
         input.category, input.description, JSON.stringify(input.responsibilities), JSON.stringify(input.requirements),
         JSON.stringify(input.benefits), input.openings, input.lat, input.lng, input.coordinateSource,
-        input.status === 'active' ? nowIso().slice(0, 10) : null, input.applicationDeadline, input.status, nowIso(), row.id, req.auth.id)
+        datePosted, input.applicationDeadline, input.status, review, reason, version, nowIso(), row.id, req.auth.id)
       replaceJobSkills(db, row.id, input.requiredSkills, input.preferredSkills)
+      const submitted = review === 'pending' && row.review_status !== 'pending' && input.status === 'active'
+      audit(db, req.auth, submitted ? 'job.submitted' : 'job.updated', 'job', row.id,
+        submitted ? `Posting "${input.title}" submitted for review.` : `Posting "${input.title}" updated.`,
+        { fields: changedFields, fromStatus: row.status, toStatus: input.status, fromReview: row.review_status, toReview: review, version })
     })()
     res.json({ job: jobDto(db, db.prepare('SELECT * FROM jobs WHERE id=?').get(row.id)) })
   })
@@ -860,7 +913,7 @@ export function createApp(config) {
     let accepted
     try {
       const input = parse(applicationSchema, req.body)
-      const job = db.prepare("SELECT * FROM jobs WHERE id=? AND status='active'").get(req.params.jobId)
+      const job = db.prepare(`SELECT * FROM jobs WHERE id=? AND ${PUBLIC_JOB_SQL}`).get(req.params.jobId)
       if (!job) throw new ApiError(404, 'JOB_NOT_FOUND', 'Job not found.')
       if (job.application_mode === 'external') {
         throw new ApiError(409, 'EXTERNAL_APPLICATION_ONLY', 'Apply through the verified external source.', { applicationUrl: job.application_url })
@@ -920,6 +973,15 @@ export function createApp(config) {
           INSERT INTO application_status_history(application_id,from_status,to_status,changed_by_user_id,changed_at)
           VALUES (?,NULL,'applied',?,?)
         `).run(id, req.auth.id, timestamp)
+        audit(db, req.auth, 'application.submitted', 'application', id, `Application submitted for "${job.title}".`,
+          { jobId: job.id, toStatus: 'applied' })
+        notifications.enqueue({
+          eventKey: `new-application:${id}`,
+          eventType: 'new-application',
+          userId: job.owner_user_id,
+          subject: `New application for ${job.title}`,
+          text: `${input.firstName} ${input.lastName} applied for "${job.title}".\nSign in to JobFinder to review the application.`,
+        })
       })()
       const row = db.prepare(`SELECT a.*, f.original_name AS resume_name, p.photo_key AS applicant_photo_key FROM applications a JOIN stored_files f ON f.id=a.resume_file_id LEFT JOIN job_seeker_profiles p ON p.user_id=a.applicant_user_id WHERE a.id=?`).get(id)
       res.status(201).json({ application: applicationDto(row) })
@@ -956,8 +1018,20 @@ export function createApp(config) {
     const timestamp = nowIso()
     db.transaction(() => {
       db.prepare('UPDATE applications SET status=?,updated_at=? WHERE id=?').run(status, timestamp, row.id)
-      db.prepare(`INSERT INTO application_status_history(application_id,from_status,to_status,changed_by_user_id,changed_at) VALUES (?,?,?,?,?)`)
+      const history = db.prepare(`INSERT INTO application_status_history(application_id,from_status,to_status,changed_by_user_id,changed_at) VALUES (?,?,?,?,?)`)
         .run(row.id, row.status, status, req.auth.id, timestamp)
+      if (row.status !== status) {
+        audit(db, req.auth, 'application.status_changed', 'application', row.id,
+          `Application status changed from ${APPLICATION_STATUS_LABELS[row.status]} to ${APPLICATION_STATUS_LABELS[status]}.`,
+          { jobId: row.job_id, fromStatus: row.status, toStatus: status })
+        notifications.enqueue({
+          eventKey: `application-status:${row.id}:${history.lastInsertRowid}`,
+          eventType: 'application-status',
+          userId: row.applicant_user_id,
+          subject: `Update on your application for ${row.job_title_snapshot}`,
+          text: `Your application for "${row.job_title_snapshot}" at ${row.company_snapshot} is now: ${APPLICATION_STATUS_LABELS[status]}.\nSign in to JobFinder to see the details.`,
+        })
+      }
     })()
     res.json({ id: row.id, status })
   })
@@ -994,6 +1068,8 @@ export function createApp(config) {
       .download(path.join(resumeDir, row.storage_key), row.original_name)
   })
 
+  registerPanelRoutes(app, { db, requireAuth, requireAdmin, jobDto, notifications })
+
   app.use('/api', (_req, _res, next) => next(new ApiError(404, 'NOT_FOUND', 'API route not found.')))
   app.use((error, _req, res, _next) => {
     if (error instanceof multer.MulterError) {
@@ -1007,5 +1083,11 @@ export function createApp(config) {
     res.status(status).json({ error: body })
   })
 
-  return { app, db, close: () => db.close() }
+  return {
+    app, db, notifications,
+    close: () => {
+      notifications.stop()
+      db.close()
+    },
+  }
 }

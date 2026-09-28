@@ -1,4 +1,4 @@
-import type { ApplicantRecord, Application, Employer, EmployerJob, Job, User } from '../types'
+import type { ApplicantRecord, Application, Employer, EmployerJob, Job, User, RecommendationPreferences } from '../types'
 
 const BASE = '/api'
 
@@ -28,7 +28,7 @@ interface RequestOptions {
   raw?: boolean
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, signal, raw = false } = options
 
   const headers: Record<string, string> = { Accept: 'application/json' }
@@ -72,6 +72,16 @@ export async function fetchPublicJobs(signal?: AbortSignal): Promise<Job[]> {
   return body.items
 }
 
+export async function fetchPreferences(signal?: AbortSignal): Promise<RecommendationPreferences> {
+  const body = await request<{ preferences: RecommendationPreferences }>('/me/preferences', { signal })
+  return body.preferences
+}
+
+export async function updatePreferences(updates: Partial<RecommendationPreferences>): Promise<RecommendationPreferences> {
+  const body = await request<{ preferences: RecommendationPreferences }>('/me/preferences', { method: 'PATCH', body: updates })
+  return body.preferences
+}
+
 export async function fetchJob(jobId: string, signal?: AbortSignal): Promise<Job> {
   const body = await request<{ job: Job }>(`/jobs/${encodeURIComponent(jobId)}`, { signal })
   return body.job
@@ -80,7 +90,7 @@ export async function fetchJob(jobId: string, signal?: AbortSignal): Promise<Job
 export interface SessionAccount {
   id: string
   email: string
-  role: 'job-seeker' | 'employer'
+  role: 'job-seeker' | 'employer' | 'admin'
   isAdmin?: boolean
 }
 

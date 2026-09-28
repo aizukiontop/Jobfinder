@@ -1,0 +1,117 @@
+
+> figma-make-app@1.0.0 test
+> npm run test:unit && npm run test:api
+
+
+> figma-make-app@1.0.0 test:unit
+> node --test tests/*.test.mjs
+
+✔ ALG-01 ontology similarities agree with independent all-pairs edge distances (38.6374ms)
+✔ ALG-02 displayed per-skill breakdown averages to the actual skill score (0.6686ms)
+✔ ALG-03 shortest route beats a more expensive direct edge (0.9496ms)
+✔ ALG-04 directed, unreachable, zero-length and nonexistent-node cases are explicit (0.209ms)
+✔ ALG-05 parallel edges, ties, zero weights and a zero-weight cycle stay correct (0.2939ms)
+✔ ALG-06 production road routes agree with Bellman-Ford on the same directed graph (648.7371ms)
+✔ empty searches preserve every job (0.8995ms)
+✔ ordinary keyword searches cover all existing searchable fields (0.9521ms)
+✔ coding resolves to Programming and finds connected developer skills (0.3683ms)
+✔ synonyms and canonical labels find the same related jobs (1.1383ms)
+✔ disconnected and unknown skills do not become semantic matches (0.3706ms)
+✔ nontechnical synonyms and unknown literal terms remain searchable (0.2031ms)
+✔ empty required skills fall back to legacy skills (0.1676ms)
+✔ search does not modify jobs or profile skill scores (0.2584ms)
+✔ BUG-01 common skill words no longer match every real job (5.3939ms)
+✔ PREF-01 the default weight is the evaluated 70/30 split (2.0725ms)
+✔ PREF-01 the default score is identical to the original 0.70 S + 0.30 G formula (0.2948ms)
+✔ PREF-02 every allowed skill weight has a complementary distance weight totalling 100 (0.2367ms)
+✔ PREF-03 fractional, negative, above-100 and non-number weights are refused (0.6145ms)
+✔ PREF-07 a 100% skill weight ranks by skill only and a 0% weight by distance only (0.1944ms)
+✔ PREF-08 a missing distance counts as zero instead of re-scaling the skill weight (0.1787ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1121.697
+
+> figma-make-app@1.0.0 test:api
+> node --test --test-concurrency=1 server/test/*.test.js
+
+✔ health and verified seed are correct and idempotent (45.3713ms)
+✔ runtime and service configuration enforce loopback-only networking (1.2326ms)
+✔ password hashing has a bounded single-worker queue (162.9132ms)
+✔ registration hashes passwords, enforces origin, and prevents duplicate emails across roles (59.6709ms)
+✔ one email may hold both a job seeker and an employer account (204.4672ms)
+✔ saved jobs are user-scoped and verified listings accept one application each (68.7614ms)
+✔ employer ownership and the complete internal application lifecycle are enforced (201.0637ms)
+✔ password reset issues single-use tokens and does not reveal account existence (135.6434ms)
+✔ migration keeps existing postings, applications and saves exactly as they were (736.0955ms)
+✔ admin routes reject visitors, employers and ordinary job seekers (37.9901ms)
+✔ a new posting waits for approval and is hidden from every public path until then (22.2639ms)
+✔ employers cannot forge review fields or change another owner posting (8.9318ms)
+✔ drafts stay private and are not placed in the admin review list (10.5978ms)
+✔ rejection needs a reason, shows the reason to the employer and allows resubmission (14.8925ms)
+✔ editing an approved posting needs a new approval and old review versions are refused (17.1314ms)
+✔ suspend and archive hide a posting but keep its applications and history (35.5402ms)
+✔ admin posting list filters by text, review state, source and page (8.2728ms)
+✔ preferences default to 70/30, reject invalid values and persist per account (11.6125ms)
+✔ audit records are admin-only, append-only and never hold personal values (3.8413ms)
+✔ with sending disabled, events are recorded as not sent and nothing reaches the mailer (2.1102ms)
+✔ application status changes notify the applicant, and opting out suppresses emails (9.3145ms)
+✔ enabled sending uses the fake mailer with bounded retries and stable duplicate protection (5.2149ms)
+✔ BUG-03 too many sign-in attempts return a clear wait message (305.2852ms)
+✔ PESO dashboard summary counts match the database (8.9832ms)
+✔ PESO can suspend and reactivate an employer without losing applications (130.1668ms)
+✔ forgot password emails a working reset link when a mail provider is set up (105.1023ms)
+✔ hired and rejected decisions email the applicant when sending is on (428.5931ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4156.2768
+
+> figma-make-app@1.0.0 typecheck
+> tsc --noEmit
+
+
+> figma-make-app@1.0.0 verify:algorithms
+> node scripts/verify-algorithms.mjs
+
+Ontology reference agreement: 10609/10609 pairs
+Dijkstra reference agreement: 36/36 directed test routes
+Report: docs/verification/algorithm-verification.json
+These checks do not measure expert-labelled recommendation accuracy or real-world travel accuracy.
+
+> figma-make-app@1.0.0 build
+> vite build
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - `__dirname` (vite.config.ts:34:27). Use `import.meta.dirname` instead
+  - JSON import "./.figma/make/site.json" without import attributes (vite.config.ts:6:31). Add `with { type: 'json' }`
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+vite v8.2.1 building client environment for production...
+[2K
+transforming...✓ 77 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/robots.txt                                 0.02 kB │ gzip:   0.04 kB
+dist/index.html                                 1.42 kB │ gzip:   0.52 kB
+dist/assets/jobfinder-logo-BnKgormO.png        57.69 kB
+dist/assets/angeles-background-DR3VPoZs.webp  129.79 kB
+dist/assets/index-CwmvAJCm.css                 42.20 kB │ gzip:  12.39 kB
+dist/assets/leaflet-src-Cx-TmuRj.js           148.81 kB │ gzip:  43.38 kB
+dist/assets/index-C1ZS4nJH.js                 584.67 kB │ gzip: 157.07 kB
+
+[INEFFECTIVE_DYNAMIC_IMPORT] src/lib/geo.ts is dynamically imported by src/components/MapView.tsx, src/pages/Search.tsx but also statically imported by src/lib/roadGraph.ts, src/pages/Profile.tsx, src/pages/employer/EmployerPostJob.tsx, dynamic import will not move module into another chunk.
+
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 385ms

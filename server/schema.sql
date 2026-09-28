@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   email TEXT NOT NULL COLLATE NOCASE CHECK(length(email) BETWEEN 3 AND 254),
   password_hash TEXT NOT NULL,
-  role TEXT NOT NULL CHECK(role IN ('job-seeker', 'employer')),
+  role TEXT NOT NULL CHECK(role IN ('job-seeker', 'employer', 'admin')),
   is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0, 1)),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -221,6 +221,54 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 
 CREATE INDEX IF NOT EXISTS ix_password_reset_user
   ON password_reset_tokens(user_id, expires_at);
+
+CREATE TABLE IF NOT EXISTS admin_profiles (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  office_name TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS user_preferences (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  skill_weight_percent INTEGER NOT NULL DEFAULT 70 CHECK(skill_weight_percent BETWEEN 0 AND 100),
+  notification_emails INTEGER NOT NULL DEFAULT 1 CHECK(notification_emails IN (0,1)),
+  updated_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS audit_events (
+  id INTEGER PRIMARY KEY,
+  actor_id TEXT,
+  actor_label TEXT NOT NULL,
+  action TEXT NOT NULL,
+  target_type TEXT NOT NULL,
+  target_id TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  details_json TEXT NOT NULL CHECK(json_valid(details_json)),
+  created_at TEXT NOT NULL
+) STRICT;
+CREATE INDEX IF NOT EXISTS ix_audit_action_time ON audit_events(action, created_at DESC);
+CREATE TRIGGER IF NOT EXISTS audit_no_update BEFORE UPDATE ON audit_events
+BEGIN SELECT RAISE(ABORT, 'Audit events are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS audit_no_delete BEFORE DELETE ON audit_events
+BEGIN SELECT RAISE(ABORT, 'Audit events are append-only'); END;
+
+CREATE TABLE IF NOT EXISTS notification_outbox (
+  id INTEGER PRIMARY KEY,
+  event_key TEXT NOT NULL UNIQUE,
+  event_type TEXT NOT NULL,
+  recipient_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  recipient TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  text_body TEXT NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('disabled','queued','sending','retry','accepted','failed','opted-out')),
+  attempts INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT NOT NULL DEFAULT '',
+  available_at TEXT NOT NULL,
+  claimed_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+) STRICT;
+CREATE INDEX IF NOT EXISTS ix_outbox_due ON notification_outbox(status, available_at);
 
 INSERT OR IGNORE INTO schema_migrations(version, name, applied_at)
 VALUES (1, 'initial backend schema', strftime('%Y-%m-%dT%H:%M:%fZ','now'));

@@ -1,45 +1,58 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useApp } from '../../context'
 import { ApiRequestError, createEmployerJob, updateEmployerJob as patchEmployerJob } from '../../lib/api'
+import { isPostingPublic } from '../../components/PostingReviewStatus'
 import { ANGELES_CITY_BARANGAYS } from '../../data/barangays'
 import { findBarangay, isWithinAngelesCity } from '../../lib/geo'
 import MapView from '../../components/MapView'
-import type { EmployerJob } from '../../types'
+import type { EmployerJob, Job } from '../../types'
 import { CATEGORIES, EMPLOYMENT_TYPES, EXPERIENCE_LEVELS } from '../../data'
 
 const WORK_SETUPS = ['On-site', 'Hybrid', 'Remote']
 
 const SPLIT_PATTERN = /[\n,]/
 
+function formFromJob(job: EmployerJob | null) {
+  return {
+    title: job?.title ?? '',
+    category: job?.category || CATEGORIES[0]?.name || 'IT & Software',
+    description: job?.description ?? '',
+    requirements: job?.requirements ?? '',
+    employmentType: job?.employmentType || 'Full-time',
+    workArrangement: job?.workArrangement || 'On-site',
+    experienceLevel: job?.experienceLevel || 'Entry level',
+    location: job?.location ?? '',
+    salaryMin: job?.salaryMin ? String(job.salaryMin) : '',
+    salaryMax: job?.salaryMax ? String(job.salaryMax) : '',
+    openings: job?.openings ? String(job.openings) : '1',
+    deadline: job?.deadline ? String(job.deadline).slice(0, 10) : '',
+    requiredSkills: (job?.requiredSkills ?? []).join(', '),
+    barangay: job?.barangay ?? '',
+  }
+}
+
+function pinFromJob(job: EmployerJob | null) {
+  return job?.coordinateSource === 'exact-address' && job.lat != null && job.lng != null
+    ? { lat: job.lat, lng: job.lng }
+    : null
+}
+
 export default function EmployerPostJob() {
   const { employer, addEmployerJob, reloadJobs, navigate, employerJobs, selectedJobId, refreshAccountData } = useApp()
   const editing = employerJobs.find(j => j.id === selectedJobId) ?? null
 
-  const [form, setForm] = useState({
-    title: editing?.title ?? '',
-    category: editing?.category ?? CATEGORIES[0]?.name ?? 'IT & Software',
-    description: editing?.description ?? '',
-    requirements: editing?.requirements ?? '',
-    employmentType: editing?.employmentType ?? 'Full-time',
-    workArrangement: editing?.workArrangement ?? 'On-site',
-    experienceLevel: editing?.experienceLevel ?? 'Entry level',
-    location: editing?.location ?? '',
-    salaryMin: editing?.salaryMin ? String(editing.salaryMin) : '',
-    salaryMax: editing?.salaryMax ? String(editing.salaryMax) : '',
-    openings: editing?.openings ? String(editing.openings) : '1',
-    deadline: editing?.deadline ? String(editing.deadline).slice(0, 10) : '',
-    requiredSkills: (editing?.requiredSkills ?? []).join(', '),
-    barangay: editing?.barangay ?? '',
-  })
+  const [form, setForm] = useState(() => formFromJob(editing))
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
+  const [savedJob, setSavedJob] = useState<Job | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [pin, setPin] = useState<{ lat: number; lng: number } | null>(
-    editing?.coordinateSource === 'exact-address' && editing.lat != null && editing.lng != null
-      ? { lat: editing.lat, lng: editing.lng }
-      : null
-  )
+  const [pin, setPin] = useState<{ lat: number; lng: number } | null>(() => pinFromJob(editing))
   const [pinNote, setPinNote] = useState('')
+
+  useEffect(() => {
+    setForm(formFromJob(editing))
+    setPin(pinFromJob(editing))
+  }, [editing?.id])
 
   const handleMapClick = (lat: number, lng: number) => {
     if (!isWithinAngelesCity(lat, lng)) {
@@ -132,7 +145,7 @@ export default function EmployerPostJob() {
       }
 
       if (editing) {
-        await patchEmployerJob(editing.id, payload)
+        setSavedJob(await patchEmployerJob(editing.id, payload))
         await refreshAccountData()
         if (!isDraft) await reloadJobs()
         setSubmitted(true)
@@ -140,6 +153,7 @@ export default function EmployerPostJob() {
       }
 
       const job = await createEmployerJob(payload)
+      setSavedJob(job)
 
       addEmployerJob({
         ...(job as unknown as EmployerJob),
@@ -177,10 +191,18 @@ export default function EmployerPostJob() {
               <polyline points="20 6 9 17 4 12"/>
             </svg>
           </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">{editing ? 'Job Updated' : 'Job Posted Successfully!'}</h2>
-          <p className="text-sm text-gray-500 mb-6">Your job listing is now live and visible to job seekers.</p>
+          <h2 className="text-lg font-bold text-gray-900 mb-2">
+            {savedJob?.status === 'draft' ? 'Draft Saved' : editing ? 'Job Updated' : 'Job Submitted for Review'}
+          </h2>
+          <p className="text-sm text-gray-500 mb-6">
+            {savedJob?.status === 'draft'
+              ? 'Your draft is private. Submit it when it is ready.'
+              : savedJob && isPostingPublic(savedJob)
+                ? 'Your job listing is live and visible to job seekers.'
+                : 'An administrator will review your posting before job seekers can see it. You will find the decision in My Job Posts.'}
+          </p>
           <div className="flex gap-3">
-            <button onClick={() => { setSubmitted(false); setForm({ title: '', category: CATEGORIES[0]?.name ?? '', description: '', requirements: '', employmentType: 'Full-time', workArrangement: 'On-site', experienceLevel: 'Entry level', location: '', salaryMin: '', salaryMax: '', openings: '1', deadline: '', requiredSkills: '', barangay: '' }) }} style={{ border: '1px solid #e5e7eb', borderRadius: 6 }} className="flex-1 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <button onClick={() => { setSubmitted(false); setForm(formFromJob(null)) }} style={{ border: '1px solid #e5e7eb', borderRadius: 6 }} className="flex-1 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
               Post Another
             </button>
             <button onClick={() => navigate('employer-jobs')} style={{ background: '#0f2044', color: '#fff', borderRadius: 6 }} className="flex-1 py-2.5 text-sm font-semibold hover:opacity-90">
@@ -197,7 +219,7 @@ export default function EmployerPostJob() {
       <div className="max-w-3xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Post a Job</h1>
-          <p className="text-sm text-gray-500 mt-1">Fill in the details below to publish a job opening.</p>
+          <p className="text-sm text-gray-500 mt-1">Fill in the details below. New postings go live after an administrator approves them.</p>
         </div>
 
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10 }} className="p-6 space-y-5">
@@ -395,7 +417,7 @@ export default function EmployerPostJob() {
               style={{ background: '#0f2044', color: '#fff', borderRadius: 6 }}
               className="flex-1 py-2.5 text-sm font-semibold hover:opacity-90 disabled:opacity-60"
             >
-              {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Post Job'}
+              {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Submit for Review'}
             </button>
           </div>
         </div>

@@ -16,13 +16,16 @@ import type {
   Job,
   Page,
   User,
+  RecommendationPreferences,
+  RecommendationScore,
+  UserRole,
 } from './types'
 
 import * as api from './lib/api'
 import { pathToRoute, routeToPath } from './lib/router'
 import { skillMatchScore } from './lib/skillMatch'
 import { explainSkillMatch, type SkillMatchDetail } from './lib/ontology'
-import { computeMatchScore } from './config/matching'
+import { computeMatchScore, DEFAULT_SKILL_WEIGHT_PERCENT } from './config/matching'
 import { computeDistanceScore } from './config/geo'
 import { loadRoadGraph, snapToGraph, type RoadGraph } from './lib/roadGraph'
 import { dijkstra } from './lib/dijkstra'
@@ -51,28 +54,39 @@ function getRoadGraph(): Promise<RoadGraph> {
  *   • either point snaps too far from the road network
  *   • Dijkstra finds no path (disconnected subgraph)
  */
-async function computeDijkstraDistanceScore(
+async function computeDijkstraDistance(
   userLat: number,
   userLng: number,
   jobLat: number,
   jobLng: number
-): Promise<number> {
+): Promise<DistanceResult> {
+  const unavailable: DistanceResult = { distanceScore: 0, accessibilityStatus: 'route-unavailable', routeKm: null, snapKm: null, totalKm: null }
   try {
     const graph = await getRoadGraph()
     const snapUser = snapToGraph(userLat, userLng, graph)
     const snapJob  = snapToGraph(jobLat,  jobLng,  graph)
-    if (!snapUser || !snapJob) return 0
+    if (!snapUser || !snapJob) return unavailable
 
     const result = dijkstra(graph, snapUser.nodeId, snapJob.nodeId)
-    if (!result.found) return 0
+    if (!result.found) return unavailable
 
     // Total road distance = Dijkstra path + snap offsets
     const totalKm = result.distanceKm + snapUser.snapDistKm + snapJob.snapDistKm
-    return computeDistanceScore(totalKm)
+    return {
+      distanceScore: computeDistanceScore(totalKm),
+      accessibilityStatus: 'available',
+      routeKm: result.distanceKm,
+      snapKm: snapUser.snapDistKm + snapJob.snapDistKm,
+      totalKm,
+    }
   } catch {
-    return 0
+    return unavailable
   }
 }
+
+type DistanceResult = Omit<RecommendationScore, 'skillScore' | 'skillWeightPercent' | 'total'>
+
+const DEFAULT_PREFERENCES: RecommendationPreferences = { skillWeightPercent: DEFAULT_SKILL_WEIGHT_PERCENT, notificationEmails: true }
 
 const LEGACY_STORAGE_KEYS = [
   'jf_accounts',
@@ -169,6 +183,9 @@ function toEmployerJob(dto: any): EmployerJob {
     openings: dto.openings ?? 1,
     deadline: dto.expirationDate ?? '',
     status: dto.status ?? 'draft',
+    reviewStatus: dto.reviewStatus,
+    reviewReason: dto.reviewReason,
+    reviewVersion: dto.reviewVersion,
     postedDate: dto.datePosted ?? '',
     daysAgo: dto.daysAgo ?? 0,
     applicantCount: dto.applicantCount ?? 0,
@@ -223,10 +240,10 @@ interface AppState {
     password: string,
     rememberMe?: boolean,
     role?: 'job-seeker' | 'employer'
-  ) => Promise<'job-seeker' | 'employer'>
+  ) => Promise<UserRole>
   signUp: (
     input: api.SeekerRegistration | api.EmployerRegistration
-  ) => Promise<'job-seeker' | 'employer'>
+  ) => Promise<UserRole>
   signOut: () => Promise<void>
 
   setUser: (user: User | null) => void
@@ -277,7 +294,14 @@ interface AppState {
    * Does NOT affect SkillMatchScore or MatchScore in any way.
    */
   isAdmin: boolean
+  adminProfile: { id: string; email: string; officeName: string } | null
   refreshAccountData: () => Promise<void>
+
+  preferences: RecommendationPreferences
+  preferencesSaving: boolean
+  preferencesError: string | null
+  savePreferences: (updates: Partial<RecommendationPreferences>) => Promise<boolean>
+  calculateRecommendationScore: (job: Job, lat?: number | null, lng?: number | null) => Promise<RecommendationScore>
 
   getSkillBreakdown: (job: Job) => SkillMatchDetail[]
 
@@ -288,7 +312,7 @@ interface AppState {
     lng?: number
   ) => Promise<number>
 
-  /** Composite MatchScore = 0.70*S(a,j) + 0.30*G(a,j). */
+  /** Composite MatchScore using the account's saved weights; default 70/30. */
   calculateMatchScore: (
     job: Job,
     userLat?: number | null,
@@ -319,6 +343,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [employer, setEmployerState] = useState<Employer | null>(null)
   const [sessionLoading, setSessionLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [adminProfile, setAdminProfile] = useState<{ id: string; email: string; officeName: string } | null>(null)
+  const [preferences, setPreferences] = useState<RecommendationPreferences>(DEFAULT_PREFERENCES)
+  const [preferencesSaving, setPreferencesSaving] = useState(false)
+  const [preferencesError, setPreferencesError] = useState<string | null>(null)
+  const accountId = user?.id ?? employer?.id ?? adminProfile?.id ?? null
   const userRef = useRef<User | null>(null)
   const employerRef = useRef<Employer | null>(null)
 
@@ -361,6 +390,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const reloadJobs = useCallback(() => loadJobs(), [loadJobs])
+
+  useEffect(() => {
+    setPreferences(DEFAULT_PREFERENCES)
+    setPreferencesError(null)
+    if (!accountId) return
+    let cancelled = false
+    api.fetchPreferences()
+      .then(next => { if (!cancelled) setPreferences(next) })
+      .catch(() => { if (!cancelled) setPreferencesError('Your saved preferences could not be loaded, so the default 70/30 is used.') })
+    return () => { cancelled = true }
+  }, [accountId])
+
+  const savePreferences = async (updates: Partial<RecommendationPreferences>) => {
+    setPreferencesSaving(true)
+    setPreferencesError(null)
+    try {
+      setPreferences(await api.updatePreferences(updates))
+      return true
+    } catch (error) {
+      setPreferencesError(error instanceof Error ? error.message : 'Your preferences could not be saved.')
+      return false
+    } finally {
+      setPreferencesSaving(false)
+    }
+  }
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -425,6 +479,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!session) {
         setUserState(null)
         setEmployerState(null)
+        setAdminProfile(null)
         setSavedJobIds([])
         setApplications([])
         setEmployerJobs([])
@@ -432,11 +487,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      if (session.account.role === 'job-seeker') {
+      if (session.account.role === 'admin') {
+        setAdminProfile({ id: session.account.id, email: session.account.email, officeName: session.profile.officeName })
+        setUserState(null)
+        setEmployerState(null)
+      } else if (session.account.role === 'job-seeker') {
+        setAdminProfile(null)
         setUserState(toUser(session.profile))
         setEmployerState(null)
         await loadSeekerData(signal)
       } else {
+        setAdminProfile(null)
         setEmployerState(toEmployer(session.profile))
         setUserState(null)
         await loadEmployerData(signal)
@@ -620,6 +681,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (typeof window === 'undefined') return
     const onPopState = () => {
       const route = pathToRoute(window.location.pathname)
+      setActionError(null)
       setPrevPage(null)
       setPage(route.page)
       setSelectedJobId(route.jobId)
@@ -631,6 +693,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [refreshAccountData])
 
   function navigate(newPage: Page, jobId?: string | null) {
+    // An action error belongs to the page where it occurred, not the next route.
+    setActionError(null)
     if (LIVE_PAGES.has(newPage)) void refreshAccountData()
     // Reaching the post form without naming a job means composing a new one,
     // never editing whichever job happened to be selected before.
@@ -647,47 +711,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const calculateSkillMatchScore = (job: Job): number => {
+  const calculateSkillMatchScore = useCallback((job: Job): number => {
     if (!user) return 0
     const required = job.requiredSkills?.length ? job.requiredSkills : job.skills ?? []
     return skillMatchScore(required, user.skills)
-  }
+  }, [user])
 
-  const getSkillBreakdown = (job: Job): SkillMatchDetail[] => {
+  const getSkillBreakdown = useCallback((job: Job): SkillMatchDetail[] => {
     if (!user) return []
     const required = job.requiredSkills?.length ? job.requiredSkills : job.skills ?? []
     return explainSkillMatch(required, user.skills)
-  }
+  }, [user])
 
-  const calculateDistanceScore = async (
+  const calculateDistanceScore = useCallback(async (
     job: Job,
     lat: number | null | undefined = matchLat,
     lng: number | null | undefined = matchLng
   ): Promise<number> => {
-    if (lat == null || lng == null || !job.lat || !job.lng) return 0
-    return computeDijkstraDistanceScore(lat, lng, job.lat, job.lng)
-  }
+    if (lat == null || lng == null || !Number.isFinite(job.lat) || !Number.isFinite(job.lng)) return 0
+    return (await computeDijkstraDistance(lat, lng, job.lat, job.lng)).distanceScore
+  }, [matchLat, matchLng])
 
-  const calculateMatchScore = async (
+  const calculateRecommendationScore = useCallback(async (
     job: Job,
     lat: number | null | undefined = matchLat,
     lng: number | null | undefined = matchLng
-  ): Promise<number> => {
-    if (!user) return 0
-
-    // S(a,j) — ontology-based skill match (synchronous)
-    const S = calculateSkillMatchScore(job)
-
-    // G(a,j) — Dijkstra shortest-path geographic accessibility (async)
-    // Thesis §Method (p.25): DistanceScore = 1/(1 + shortestPathKm/14.9434)
-    let G = 0
-    if (lat != null && lng != null && job.lat && job.lng) {
-      G = await computeDijkstraDistanceScore(lat, lng, job.lat, job.lng)
+  ): Promise<RecommendationScore> => {
+    const skillWeightPercent = preferences.skillWeightPercent
+    const skillScore = calculateSkillMatchScore(job)
+    let distance: DistanceResult = { distanceScore: 0, accessibilityStatus: 'not-used', routeKm: null, snapKm: null, totalKm: null }
+    if (skillWeightPercent < 100) {
+      if (lat == null || lng == null) {
+        distance = { ...distance, accessibilityStatus: 'missing-location' }
+      } else if (job.lat == null || job.lng == null) {
+        distance = { ...distance, accessibilityStatus: 'missing-job-location' }
+      } else {
+        distance = await computeDijkstraDistance(lat, lng, job.lat, job.lng)
+      }
     }
+    const total = user ? computeMatchScore(skillScore, distance.distanceScore, skillWeightPercent) : 0
+    return { skillScore, skillWeightPercent, total, ...distance }
+  }, [user, calculateSkillMatchScore, matchLat, matchLng, preferences.skillWeightPercent])
 
-    // MatchScore = α×S + β×G  (α=0.70, β=0.30)
-    return computeMatchScore(S, G)
-  }
+  const calculateMatchScore = useCallback(async (job: Job, lat: number | null | undefined = matchLat, lng: number | null | undefined = matchLng) => {
+    if (!user) return 0
+    return (await calculateRecommendationScore(job, lat, lng)).total
+  }, [user, calculateRecommendationScore, matchLat, matchLng])
 
   const hasApplied = (jobId: string) => applications.some(app => app.jobId === jobId)
 
@@ -750,7 +819,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         reloadJobs,
         calculateSkillMatchScore,
         isAdmin,
+        adminProfile,
         refreshAccountData,
+        preferences,
+        preferencesSaving,
+        preferencesError,
+        savePreferences,
+        calculateRecommendationScore,
         calculateDistanceScore,
         getSkillBreakdown,
         calculateMatchScore,

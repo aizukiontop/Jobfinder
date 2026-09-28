@@ -1,0 +1,388 @@
+{
+  "generatedAt": "2026-09-28T23:28:53.104Z",
+  "purpose": "Post-defense implementation correctness checks, NOT expert-labelled recommendation accuracy or real-world travel validation.",
+  "nodeVersion": "v24.14.1",
+  "inputs": {
+    "roadGraphSha256": "cef46dbb5ed67896ed68e28d88eef9a5342a691dfd46ada8e5922585aab6fdfe",
+    "ontologySha256": "bfa19bd2a1fcf8af87e92f2ced944e27a00edd6843043cad153c41d63ba16e62",
+    "nodeCount": 8282,
+    "edgeCount": 11199
+  },
+  "ontology": {
+    "reference": "Independent Floyd-Warshall edge-count distances",
+    "pairsChecked": 10609,
+    "pairsAgreed": 10609,
+    "externalRelevanceAccuracy": "NOT MEASURED: requires independent relevance labels and held-out cases."
+  },
+  "dijkstra": {
+    "reference": "Independent Bellman-Ford using identical directed edges and kilometre weights",
+    "selection": "Deterministic six sorted node quantiles; all 36 ordered pairs, including six self-pairs.",
+    "absoluteToleranceKm": 1e-9,
+    "routesChecked": 36,
+    "routesAgreed": 36,
+    "meanExecutionMs": 1.680400000000012,
+    "realWorldRouteAccuracy": "NOT MEASURED: same-graph agreement does not validate map completeness or actual journey times.",
+    "routes": [
+      {
+        "from": "10028742562",
+        "to": "10028742562",
+        "found": true,
+        "distanceKm": 0,
+        "referenceKm": 0,
+        "absoluteErrorKm": 0,
+        "executionMs": 0.11960000000004811,
+        "pathNodes": 1
+      },
+      {
+        "from": "10028742562",
+        "to": "1166229917",
+        "found": true,
+        "distanceKm": 7.258814999999996,
+        "referenceKm": 7.258814999999996,
+        "absoluteErrorKm": 0,
+        "executionMs": 12.201700000000017,
+        "pathNodes": 97
+      },
+      {
+        "from": "10028742562",
+        "to": "313908835",
+        "found": true,
+        "distanceKm": 3.030651,
+        "referenceKm": 3.030651,
+        "absoluteErrorKm": 0,
+        "executionMs": 1.051300000000026,
+        "pathNodes": 50
+      },
+      {
+        "from": "10028742562",
+        "to": "5242249601",
+        "found": true,
+        "distanceKm": 4.383018000000002,
+        "referenceKm": 4.383018000000002,
+        "absoluteErrorKm": 0,
+        "executionMs": 2.043200000000013,
+        "pathNodes": 54
+      },
+      {
+        "from": "10028742562",
+        "to": "7675928239",
+        "found": true,
+        "distanceKm": 3.677523,
+        "referenceKm": 3.677523,
+        "absoluteErrorKm": 0,
+        "executionMs": 1.8519999999999754,
+        "pathNodes": 43
+      },
+      {
+        "from": "10028742562",
+        "to": "9927330161",
+        "found": true,
+        "distanceKm": 4.214726000000001,
+        "referenceKm": 4.214726000000001,
+        "absoluteErrorKm": 0,
+        "executionMs": 1.94440000000003,
+        "pathNodes": 47
+      },
+      {
+        "from": "1166229917",
+        "to": "10028742562",
+        "found": true,
+        "distanceKm": 7.021171,
+        "referenceKm": 7.021171,
+        "absoluteErrorKm": 0,
+        "executionMs": 2.6520000000000437,
+        "pathNodes": 95
+      },
+      {
+        "from": "1166229917",
+        "to": "1166229917",
+        "found": true,
+        "distanceKm": 0,
+        "referenceKm": 0,
+        "absoluteErrorKm": 0,
+        "executionMs": 0.004000000000019099,
+        "pathNodes": 1
+      },
+      {
+        "from": "1166229917",
+        "to": "313908835",
+        "found": true,
+        "distanceKm": 5.937001,
+        "referenceKm": 5.937001,
+        "absoluteErrorKm": 0,
+        "executionMs": 1.9075000000000273,
+        "pathNodes": 70
+      },
+      {
+        "from": "1166229917",
+        "to": "5242249601",
+        "found": true,
+        "distanceKm": 3.2695389999999995,
+        "referenceKm": 3.2695389999999995,
+        "absoluteErrorKm": 0,
+        "executionMs": 0.5846000000000231,
+        "pathNodes": 46
+      },
+      {
+        "from": "1166229917",
+        "to": "7675928239",
+        "found": true,
+        "distanceKm": 7.025708999999999,
+        "referenceKm": 7.025708999999999,
+        "absoluteErrorKm": 0,
+        "executionMs": 3.3606999999999516,
+        "pathNodes": 102
+      },
+      {
+        "from": "1166229917",
+        "to": "9927330161",
+        "found": true,
+        "distanceKm": 3.404713,
+        "referenceKm": 3.404713,
+        "absoluteErrorKm": 0,
+        "executionMs": 0.70900000000006,
+        "pathNodes": 43
+      },
+      {
+        "from": "313908835",
+        "to": "10028742562",
+        "found": true,
+        "distanceKm": 3.012404,
+        "referenceKm": 3.012404,
+        "absoluteErrorKm": 0,
+        "executionMs": 1.7878000000000611,
+        "pathNodes": 52
+      },
+      {
+        "from": "313908835",
+        "to": "1166229917",
+        "found": true,
+        "distanceKm": 5.9370009999999995,
+        "referenceKm": 5.9370009999999995,
+        "absoluteErrorKm": 0,
+        "executionMs": 4.156800000000089,
+        "pathNodes": 70
+      },
+      {
+        "from": "313908835",
+        "to": "313908835",
+        "found": true,
+        "distanceKm": 0,
+        "referenceKm": 0,
+        "absoluteErrorKm": 0,
+        "executionMs": 0.0018000000000029104,
+        "pathNodes": 1
+      },
+      {
+        "from": "313908835",
+        "to": "5242249601",
+        "found": true,
+        "distanceKm": 2.9063799999999995,
+        "referenceKm": 2.9063799999999995,
+        "absoluteErrorKm": 0,
+        "executionMs": 1.3827999999999747,
+        "pathNodes": 39
+      },
+      {
+        "from": "313908835",
+        "to": "7675928239",
+        "found": true,
+        "distanceKm": 2.079771,
+        "referenceKm": 2.079771,
+        "absoluteErrorKm": 0,
+        "executionMs": 0.5569000000000415,
+        "pathNodes": 35
+      },
+      {
+        "from": "313908835",
+        "to": "9927330161",
+        "found": true,
+        "distanceKm": 2.738088,
+        "referenceKm": 2.738088,
+        "absoluteErrorKm": 0,
+        "executionMs": 1.3537000000000035,
+        "pathNodes": 32
+      },
+      {
+        "from": "5242249601",
+        "to": "10028742562",
+        "found": true,
+        "distanceKm": 4.178803999999999,
+        "referenceKm": 4.178803999999999,
+        "absoluteErrorKm": 0,
+        "executionMs": 1.842999999999961,
+        "pathNodes": 55
+      },
+      {
+        "from": "5242249601",
+        "to": "1166229917",
+        "found": true,
+        "distanceKm": 3.2952280000000003,
+        "referenceKm": 3.2952280000000003,
+        "absoluteErrorKm": 0,
+        "executionMs": 1.3833000000000766,
+        "pathNodes": 48
+      },
+      {
+        "from": "5242249601",
+        "to": "313908835",
+        "found": true,
+        "distanceKm": 2.954627,
+        "referenceKm": 2.954627,
+        "absoluteErrorKm": 0,
+        "executionMs": 0.8529999999999518,
+        "pathNodes": 43
+      },
+      {
+        "from": "5242249601",
+        "to": "5242249601",
+        "found": true,
+        "distanceKm": 0,
+        "referenceKm": 0,
+        "absoluteErrorKm": 0,
+        "executionMs": 0.0006999999999379725,
+        "pathNodes": 1
+      },
+      {
+        "from": "5242249601",
+        "to": "7675928239",
+        "found": true,
+        "distanceKm": 4.043335,
+        "referenceKm": 4.043335,
+        "absoluteErrorKm": 0,
+        "executionMs": 1.5697999999999865,
+        "pathNodes": 75
+      },
+      {
+        "from": "5242249601",
+        "to": "9927330161",
+        "found": true,
+        "distanceKm": 0.4223390000000001,
+        "referenceKm": 0.4223390000000001,
+        "absoluteErrorKm": 0,
+        "executionMs": 0.01239999999995689,
+        "pathNodes": 16
+      },
+      {
+        "from": "7675928239",
+        "to": "10028742562",
+        "found": true,
+        "distanceKm": 3.6855829999999994,
+        "referenceKm": 3.6855829999999994,
+        "absoluteErrorKm": 0,
+        "executionMs": 1.7729000000000497,
+        "pathNodes": 47
+      },
+      {
+        "from": "7675928239",
+        "to": "1166229917",
+        "found": true,
+        "distanceKm": 7.293759999999999,
+        "referenceKm": 7.293759999999999,
+        "absoluteErrorKm": 0,
+        "executionMs": 4.398199999999974,
+        "pathNodes": 101
+      },
+      {
+        "from": "7675928239",
+        "to": "313908835",
+        "found": true,
+        "distanceKm": 2.079771,
+        "referenceKm": 2.079771,
+        "absoluteErrorKm": 0,
+        "executionMs": 0.4117999999999711,
+        "pathNodes": 35
+      },
+      {
+        "from": "7675928239",
+        "to": "5242249601",
+        "found": true,
+        "distanceKm": 4.263139000000001,
+        "referenceKm": 4.263139000000001,
+        "absoluteErrorKm": 0,
+        "executionMs": 2.4950000000000045,
+        "pathNodes": 70
+      },
+      {
+        "from": "7675928239",
+        "to": "7675928239",
+        "found": true,
+        "distanceKm": 0,
+        "referenceKm": 0,
+        "absoluteErrorKm": 0,
+        "executionMs": 0.0013000000000147338,
+        "pathNodes": 1
+      },
+      {
+        "from": "7675928239",
+        "to": "9927330161",
+        "found": true,
+        "distanceKm": 4.094846999999999,
+        "referenceKm": 4.094846999999999,
+        "absoluteErrorKm": 0,
+        "executionMs": 2.541400000000067,
+        "pathNodes": 63
+      },
+      {
+        "from": "9927330161",
+        "to": "10028742562",
+        "found": true,
+        "distanceKm": 3.962264999999999,
+        "referenceKm": 3.962264999999999,
+        "absoluteErrorKm": 0,
+        "executionMs": 1.805300000000102,
+        "pathNodes": 44
+      },
+      {
+        "from": "9927330161",
+        "to": "1166229917",
+        "found": true,
+        "distanceKm": 3.404713,
+        "referenceKm": 3.404713,
+        "absoluteErrorKm": 0,
+        "executionMs": 1.3107000000001108,
+        "pathNodes": 43
+      },
+      {
+        "from": "9927330161",
+        "to": "313908835",
+        "found": true,
+        "distanceKm": 2.738088,
+        "referenceKm": 2.738088,
+        "absoluteErrorKm": 0,
+        "executionMs": 0.7852999999998929,
+        "pathNodes": 32
+      },
+      {
+        "from": "9927330161",
+        "to": "5242249601",
+        "found": true,
+        "distanceKm": 0.374092,
+        "referenceKm": 0.374092,
+        "absoluteErrorKm": 0,
+        "executionMs": 0.01269999999999527,
+        "pathNodes": 12
+      },
+      {
+        "from": "9927330161",
+        "to": "7675928239",
+        "found": true,
+        "distanceKm": 3.8267959999999994,
+        "referenceKm": 3.8267959999999994,
+        "absoluteErrorKm": 0,
+        "executionMs": 1.6269999999999527,
+        "pathNodes": 64
+      },
+      {
+        "from": "9927330161",
+        "to": "9927330161",
+        "found": true,
+        "distanceKm": 0,
+        "referenceKm": 0,
+        "absoluteErrorKm": 0,
+        "executionMs": 0.0008000000000265572,
+        "pathNodes": 1
+      }
+    ]
+  }
+}

@@ -21,10 +21,9 @@ export function loadConfig(overrides = {}) {
     rememberTtlSeconds: overrides.rememberTtlSeconds ?? positiveInteger(process.env.JOBFINDER_REMEMBER_TTL, 2_592_000),
     secureCookies: overrides.secureCookies ?? process.env.NODE_ENV === 'production',
     seedOnStart: overrides.seedOnStart ?? process.env.JOBFINDER_SEED_ON_START === '1',
-    adminEmails: overrides.adminEmails ?? String(process.env.JOBFINDER_ADMIN_EMAILS ?? '')
-      .split(',').map((value) => value.trim().toLowerCase()).filter(Boolean),
     resetTokenTtlSeconds: overrides.resetTokenTtlSeconds ?? positiveInteger(process.env.JOBFINDER_RESET_TTL, 1_800),
     authRateLimit: overrides.authRateLimit ?? positiveInteger(process.env.JOBFINDER_AUTH_RATE_LIMIT, 10),
+    notificationsEnabled: overrides.notificationsEnabled ?? process.env.JOBFINDER_NOTIFICATIONS_ENABLED === '1',
     mail: overrides.mail ?? {
       provider: process.env.JOBFINDER_MAIL_PROVIDER ?? 'none',
       apiKey: process.env.JOBFINDER_MAIL_API_KEY ?? '',

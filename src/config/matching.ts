@@ -24,6 +24,8 @@ if (Math.abs(ALPHA + BETA - 1) > 1e-9) {
   throw new Error(`ALPHA + BETA must equal 1 (got ${ALPHA + BETA})`)
 }
 
+export const DEFAULT_SKILL_WEIGHT_PERCENT = Math.round(ALPHA * 100)
+
 /**
  * Compute the composite recommendation score.
  *
@@ -34,7 +36,16 @@ if (Math.abs(ALPHA + BETA - 1) > 1e-9) {
  */
 export function computeMatchScore(
   skillMatchScore: number,
-  distanceScore: number
+  distanceScore: number,
+  skillWeightPercent = DEFAULT_SKILL_WEIGHT_PERCENT
 ): number {
-  return ALPHA * skillMatchScore + BETA * distanceScore
+  const { skillWeight, accessibilityWeight } = recommendationWeights(skillWeightPercent)
+  return skillWeight * skillMatchScore + accessibilityWeight * distanceScore
+}
+
+export function recommendationWeights(skillWeightPercent: number) {
+  if (!Number.isInteger(skillWeightPercent) || skillWeightPercent < 0 || skillWeightPercent > 100) {
+    throw new RangeError('Skill weight must be a whole percentage from 0 to 100.')
+  }
+  return { skillWeight: skillWeightPercent / 100, accessibilityWeight: (100 - skillWeightPercent) / 100 }
 }
